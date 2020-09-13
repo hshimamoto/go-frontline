@@ -9,6 +9,7 @@ import (
 
     "frontline/lib/connection"
     "frontline/lib/log"
+    "frontline/lib/msg"
     "github.com/hshimamoto/go-session"
 )
 
@@ -36,6 +37,9 @@ func (s *SupplyLine)Run() {
 	    log.Println("no read")
 	    break
 	}
+	log.Printf("recv: %v\n", buf[:n])
+	cmd := msg.ParseCommand(buf[:n])
+	log.Printf("command: %v\n", *cmd)
     }
 }
 

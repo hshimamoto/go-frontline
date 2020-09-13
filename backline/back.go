@@ -4,11 +4,13 @@
 package main
 
 import (
+    "fmt"
     "net"
     "os"
     "time"
 
     "frontline/lib/log"
+    "frontline/lib/msg"
     "github.com/hshimamoto/go-session"
 )
 
@@ -24,6 +26,21 @@ func NewSupplyLine(front string) *SupplyLine {
 }
 
 func (s *SupplyLine)main(conn net.Conn) {
+    hostname, err := os.Hostname()
+    if err != nil {
+	log.Printf("unable to get hostname: %v\n", err)
+	hostname = "Unknown"
+    }
+    cmd := &msg.Command{}
+    cmd.Name = "LINK"
+    cmd.Client = fmt.Sprintf("%s-%d", hostname, os.Getpid())
+    cmd.ConnId = 0
+    cmd.DataLen = 0
+    cmd.Data = []byte{}
+    if _, err := conn.Write(cmd.Pack()); err != nil {
+	log.Printf("send command error: %v\n", err)
+	return
+    }
     for {
 	time.Sleep(time.Second)
     }
