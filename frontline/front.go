@@ -7,6 +7,7 @@ import (
     "net"
     "os"
 
+    "frontline/lib/connection"
     "frontline/lib/log"
     "github.com/hshimamoto/go-session"
 )
@@ -24,6 +25,9 @@ func main() {
     serv, err := session.NewServer(listen, func(conn net.Conn) {
 	defer conn.Close()
 	log.Println("connected")
+	if err := connection.EnableKeepAlive(conn); err != nil {
+	    log.Printf("enable keepalive: %v\n", err)
+	}
 	for {
 	    buf := make([]byte, 4096)
 	    n, err := conn.Read(buf)
