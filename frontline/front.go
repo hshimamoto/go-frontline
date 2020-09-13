@@ -22,7 +22,21 @@ func main() {
     log.Printf("start listen %s", listen)
 
     serv, err := session.NewServer(listen, func(conn net.Conn) {
-	conn.Close()
+	defer conn.Close()
+	log.Println("connected")
+	for {
+	    buf := make([]byte, 4096)
+	    n, err := conn.Read(buf)
+	    if err != nil {
+		log.Printf("Read: %v\n", err)
+		break
+	    }
+	    if n == 0 {
+		log.Println("no read")
+		break
+	    }
+	}
+	log.Println("close connection")
     })
     if err != nil {
 	log.Printf("NewServer: %v\n", err)

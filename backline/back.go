@@ -6,10 +6,40 @@ package main
 import (
     "net"
     "os"
+    "time"
 
     "frontline/lib/log"
     "github.com/hshimamoto/go-session"
 )
+
+type SupplyLine struct {
+    front string
+}
+
+func NewSupplyLine(front string) *SupplyLine {
+    s := &SupplyLine{
+	front: front,
+    }
+    return s
+}
+
+func (s *SupplyLine)main(conn net.Conn) {
+    for {
+	time.Sleep(time.Second)
+    }
+}
+
+func (s *SupplyLine)Run() {
+    for {
+	if conn, err := session.Dial(s.front); err == nil {
+	    s.main(conn)
+	} else {
+	    log.Printf("SupplyLine %s: %v\n", s.front, err)
+	}
+	// interval
+	time.Sleep(time.Second)
+    }
+}
 
 func main() {
     log.Setup("backline")
@@ -33,5 +63,10 @@ func main() {
     if err != nil {
 	log.Printf("NewServer: %v\n", err)
     }
+
+    // now we can start to communicate with frontline
+    s := NewSupplyLine(front)
+    go s.Run()
+
     serv.Run()
 }
