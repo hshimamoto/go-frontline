@@ -24,7 +24,7 @@ type Connection struct {
     Q chan *msg.Command
 }
 
-func (c *Connection)Run(conn net.Conn, q_req chan *msg.Command) {
+func (c *Connection)Run(conn net.Conn, q_req chan []byte) {
     log.Printf("start connection %d\n", c.Id)
     // get CONNECT request
     buf := make([]byte, 256)
@@ -63,12 +63,7 @@ func (c *Connection)Run(conn net.Conn, q_req chan *msg.Command) {
 	return
     }
     log.Printf("CONNECT %s\n", w[1])
-    cmd := &msg.Command{}
-    cmd.Name = "CONNECT"
-    cmd.Client = "Unknown" // No need?
-    cmd.ConnId = c.Id
-    cmd.DataLen = 0
-    cmd.Data = []byte{}
+    cmd := msg.PackedConnectCommand(c.Id)
     q_req <- cmd
     log.Printf("end connection %d\n", c.Id)
 }
@@ -77,7 +72,7 @@ type SupplyLine struct {
     front string
     connections []Connection
     free *Connection
-    q_req chan *msg.Command
+    q_req chan []byte
 }
 
 func NewSupplyLine(front string) *SupplyLine {
@@ -96,7 +91,7 @@ func NewSupplyLine(front string) *SupplyLine {
 	prev = conn
     }
     s.free = prev
-    s.q_req = make(chan *msg.Command)
+    s.q_req = make(chan []byte)
     return s
 }
 
@@ -106,20 +101,15 @@ func (s *SupplyLine)main(conn net.Conn) {
 	log.Printf("unable to get hostname: %v\n", err)
 	hostname = "Unknown"
     }
-    cmd := &msg.Command{}
-    cmd.Name = "LINK"
-    cmd.Client = fmt.Sprintf("%s-%d", hostname, os.Getpid())
-    cmd.ConnId = 0
-    cmd.DataLen = 0
-    cmd.Data = []byte{}
-    if _, err := conn.Write(cmd.Pack()); err != nil {
+    cmd := msg.PackedLinkCommand(fmt.Sprintf("%s-%d", hostname, os.Getpid()))
+    if _, err := conn.Write(cmd); err != nil {
 	log.Printf("send command error: %v\n", err)
 	return
     }
     for {
 	select {
 	case cmd := <-s.q_req:
-	    conn.Write(cmd.Pack())
+	    conn.Write(cmd)
 	case <-time.After(time.Minute):
 	}
     }

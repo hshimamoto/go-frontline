@@ -39,7 +39,15 @@ func (s *SupplyLine)Run() {
 	}
 	log.Printf("recv: %v\n", buf[:n])
 	cmd := msg.ParseCommand(buf[:n])
-	log.Printf("command: %v\n", *cmd)
+	log.Printf("cmd: %s\n", cmd.Name())
+	switch cmd.(type) {
+	case *msg.LinkCommand:
+	    log.Println("link command")
+	case *msg.ConnectCommand:
+	    log.Println("connect command")
+	case *msg.UnknownCommand:
+	    log.Println("unknown command")
+	}
     }
 }
 
