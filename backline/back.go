@@ -4,9 +4,11 @@
 package main
 
 import (
+    "bytes"
     "fmt"
     "net"
     "os"
+    "strings"
     "time"
 
     "frontline/lib/log"
@@ -24,6 +26,43 @@ type Connection struct {
 
 func (c *Connection)Run(conn net.Conn, q_req chan *msg.Command) {
     log.Printf("start connection %d\n", c.Id)
+    // get CONNECT request
+    buf := make([]byte, 256)
+    n, err := conn.Read(buf)
+    if err != nil {
+	log.Printf("Read: %v\n", err)
+	return
+    }
+    for {
+	if bytes.Index(buf, []byte{13, 10, 13, 10}) > 0 {
+	    break
+	}
+	r, err := conn.Read(buf[n:n+1])
+	if err != nil {
+	    log.Printf("Read: %v\n", err)
+	    return
+	}
+	if r == 0 {
+	    log.Println("no Read\n")
+	    return
+	}
+	n += r
+	if n >= 256 {
+	    log.Println("header too long")
+	    return
+	}
+    }
+    lines := strings.Split(string(buf[:n]), "\r\n")
+    w := strings.Split(lines[0], " ")
+    if len(w) < 3 {
+	log.Println("bad request")
+	return
+    }
+    if w[0] != "CONNECT" {
+	log.Printf("uknown request method %s\n", w[0])
+	return
+    }
+    log.Printf("CONNECT %s\n", w[1])
     cmd := &msg.Command{}
     cmd.Name = "CONNECT"
     cmd.Client = "Unknown" // No need?
