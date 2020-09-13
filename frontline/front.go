@@ -67,6 +67,7 @@ func main() {
     })
     if err != nil {
 	log.Printf("NewServer: %v\n", err)
+	return
     }
     serv.Run()
 }

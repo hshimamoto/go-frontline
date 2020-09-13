@@ -79,6 +79,7 @@ func main() {
     })
     if err != nil {
 	log.Printf("NewServer: %v\n", err)
+	return
     }
 
     // now we can start to communicate with frontline
