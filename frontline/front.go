@@ -13,15 +13,38 @@ import (
     "github.com/hshimamoto/go-session"
 )
 
+type Connection struct {
+    Id int
+    Used bool
+    HostPort string
+}
+
 type SupplyLine struct {
     back net.Conn
+    connections []Connection
 }
 
 func NewSupplyLine(conn net.Conn) (*SupplyLine, error) {
     s := &SupplyLine{
 	back: conn,
     }
+    s.connections = make([]Connection, 256)
+    for i := 0; i < 256; i++ {
+	conn := &s.connections[i]
+	conn.Id = i
+	conn.Used = false
+    }
     return s, nil
+}
+
+func (s *SupplyLine)handleConnect(conn net.Conn, cmd *msg.ConnectCommand) {
+    c := &s.connections[cmd.ConnId]
+    if c.Used {
+	// TODO: disconnect
+	return
+    }
+    c.Used = true
+    c.HostPort = cmd.HostPort
 }
 
 func (s *SupplyLine)Run() {
@@ -45,6 +68,7 @@ func (s *SupplyLine)Run() {
 	    log.Printf("link from %s\n", cmd.Client)
 	case *msg.ConnectCommand:
 	    log.Printf("connect to %s [%d]\n", cmd.HostPort, cmd.ConnId)
+	    s.handleConnect(conn, cmd)
 	case *msg.UnknownCommand:
 	    log.Println("unknown command")
 	}
