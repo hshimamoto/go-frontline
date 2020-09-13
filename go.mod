@@ -1,4 +1,4 @@
-module github.com/hshimamoto/go-httpfrontline
+module frontline
 
 go 1.15
 

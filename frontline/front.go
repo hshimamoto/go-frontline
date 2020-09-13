@@ -4,17 +4,15 @@
 package main
 
 import (
-    "fmt"
-    "log"
     "net"
     "os"
 
+    "frontline/lib/log"
     "github.com/hshimamoto/go-session"
 )
 
 func main() {
-    log.SetFlags(log.Flags() | log.Lmsgprefix)
-    log.SetPrefix(fmt.Sprintf("[%d <frontline>] ", os.Getpid()))
+    log.Setup("frontline")
 
     listen := ":8443"
     if len(os.Args) > 1 {
