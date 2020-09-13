@@ -15,6 +15,7 @@ func ParseCommand(buf []byte) *Command {
     c := &Command{}
     switch buf[0] {
     case 0: c.Name = "LINK"
+    case 1: c.Name = "CONNECT"
     default:
 	return c
     }
@@ -32,6 +33,7 @@ func (c *Command)Pack() []byte {
     err := []byte{}
     switch c.Name {
     case "LINK": buf[0] = 0
+    case "CONNECT": buf[0] = 1
     default:
 	return err
     }

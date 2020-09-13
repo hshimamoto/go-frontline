@@ -14,14 +14,50 @@ import (
     "github.com/hshimamoto/go-session"
 )
 
+type Connection struct {
+    Id int
+    Used bool
+    Next *Connection
+    Conn net.Conn
+    Q chan *msg.Command
+}
+
+func (c *Connection)Run(conn net.Conn, q_req chan *msg.Command) {
+    log.Printf("start connection %d\n", c.Id)
+    cmd := &msg.Command{}
+    cmd.Name = "CONNECT"
+    cmd.Client = "Unknown" // No need?
+    cmd.ConnId = c.Id
+    cmd.DataLen = 0
+    cmd.Data = []byte{}
+    q_req <- cmd
+    log.Printf("end connection %d\n", c.Id)
+}
+
 type SupplyLine struct {
     front string
+    connections []Connection
+    free *Connection
+    q_req chan *msg.Command
 }
 
 func NewSupplyLine(front string) *SupplyLine {
     s := &SupplyLine{
 	front: front,
     }
+    s.connections = make([]Connection, 256)
+    // initialize
+    var prev *Connection = nil
+    for i := 0; i < 256; i++ {
+	conn := &s.connections[i]
+	conn.Id = i
+	conn.Used = false
+	conn.Next = prev
+	conn.Q = make(chan *msg.Command)
+	prev = conn
+    }
+    s.free = prev
+    s.q_req = make(chan *msg.Command)
     return s
 }
 
@@ -42,7 +78,11 @@ func (s *SupplyLine)main(conn net.Conn) {
 	return
     }
     for {
-	time.Sleep(time.Second)
+	select {
+	case cmd := <-s.q_req:
+	    conn.Write(cmd.Pack())
+	case <-time.After(time.Minute):
+	}
     }
 }
 
@@ -56,6 +96,27 @@ func (s *SupplyLine)Run() {
 	// interval
 	time.Sleep(time.Second)
     }
+}
+
+func (s *SupplyLine)Connect(conn net.Conn) {
+    log.Println("accept new stream")
+    if s.free == nil {
+	log.Println("no free connection slot")
+	conn.Close()
+	return
+    }
+    // get one
+    c := s.free
+    s.free = s.free.Next
+    // mark it used
+    c.Used = true
+    go func() {
+	defer conn.Close()
+	c.Run(conn, s.q_req)
+	// back to free
+	c.Next = s.free
+	s.free = c
+    }()
 }
 
 func main() {
@@ -74,16 +135,15 @@ func main() {
 
     log.Printf("start front %s listen %s", front, listen)
 
-    serv, err := session.NewServer(listen, func(conn net.Conn) {
-	conn.Close()
-    })
+    s := NewSupplyLine(front)
+
+    serv, err := session.NewServer(listen, s.Connect)
     if err != nil {
 	log.Printf("NewServer: %v\n", err)
 	return
     }
 
     // now we can start to communicate with frontline
-    s := NewSupplyLine(front)
     go s.Run()
 
     serv.Run()
