@@ -12,6 +12,33 @@ import (
     "github.com/hshimamoto/go-session"
 )
 
+type SupplyLine struct {
+    back net.Conn
+}
+
+func NewSupplyLine(conn net.Conn) (*SupplyLine, error) {
+    s := &SupplyLine{
+	back: conn,
+    }
+    return s, nil
+}
+
+func (s *SupplyLine)Run() {
+    conn := s.back
+    for {
+	buf := make([]byte, 4096)
+	n, err := conn.Read(buf)
+	if err != nil {
+	    log.Printf("Read: %v\n", err)
+	    break
+	}
+	if n == 0 {
+	    log.Println("no read")
+	    break
+	}
+    }
+}
+
 func main() {
     log.Setup("frontline")
 
@@ -28,17 +55,9 @@ func main() {
 	if err := connection.EnableKeepAlive(conn); err != nil {
 	    log.Printf("enable keepalive: %v\n", err)
 	}
-	for {
-	    buf := make([]byte, 4096)
-	    n, err := conn.Read(buf)
-	    if err != nil {
-		log.Printf("Read: %v\n", err)
-		break
-	    }
-	    if n == 0 {
-		log.Println("no read")
-		break
-	    }
+	// new SupplyLine
+	if s, err := NewSupplyLine(conn); err == nil {
+	    s.Run()
 	}
 	log.Println("close connection")
     })
