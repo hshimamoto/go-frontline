@@ -41,23 +41,32 @@ func (c *LinkCommand)Name() string {
     return "LinkCommand"
 }
 
-func PackedConnectCommand(connId int) []byte {
+func PackedConnectCommand(connId int, hostport string) []byte {
     err := []byte{}
     if connId >= 256 {
 	return err
     }
-    buf := make([]byte, 2)
+    hlen := len(hostport)
+    if hlen >= 128 {
+	return err
+    }
+    buf := make([]byte, 3 + hlen)
     buf[0] = connectCommand
     buf[1] = byte(connId)
+    buf[2] = byte(hlen)
+    copy(buf[3:], hostport)
     return buf
 }
 
 type ConnectCommand struct {
     ConnId int
+    HostPort string
 }
 
 func ParseConnectCommand(buf []byte) *ConnectCommand {
-    return &ConnectCommand{ ConnId: int(buf[1]) }
+    connId := int(buf[1])
+    hlen := int(buf[2])
+    return &ConnectCommand{ ConnId: connId, HostPort: string(buf[3:3+hlen]) }
 }
 
 func (c *ConnectCommand)Name() string {

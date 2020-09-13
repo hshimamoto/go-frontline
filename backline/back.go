@@ -63,7 +63,7 @@ func (c *Connection)Run(conn net.Conn, q_req chan []byte) {
 	return
     }
     log.Printf("CONNECT %s\n", w[1])
-    cmd := msg.PackedConnectCommand(c.Id)
+    cmd := msg.PackedConnectCommand(c.Id, w[1])
     q_req <- cmd
     log.Printf("end connection %d\n", c.Id)
 }

@@ -40,11 +40,11 @@ func (s *SupplyLine)Run() {
 	log.Printf("recv: %v\n", buf[:n])
 	cmd := msg.ParseCommand(buf[:n])
 	log.Printf("cmd: %s\n", cmd.Name())
-	switch cmd.(type) {
+	switch cmd := cmd.(type) {
 	case *msg.LinkCommand:
-	    log.Println("link command")
+	    log.Printf("link from %s\n", cmd.Client)
 	case *msg.ConnectCommand:
-	    log.Println("connect command")
+	    log.Printf("connect to %s [%d]\n", cmd.HostPort, cmd.ConnId)
 	case *msg.UnknownCommand:
 	    log.Println("unknown command")
 	}
