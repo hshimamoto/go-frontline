@@ -47,6 +47,15 @@ func (s *SupplyLine)handleConnect(conn net.Conn, cmd *msg.ConnectCommand) {
     c.HostPort = cmd.HostPort
 }
 
+func (s *SupplyLine)handleDisconnect(conn net.Conn, cmd *msg.DisconnectCommand) {
+    c := &s.connections[cmd.ConnId]
+    if !c.Used {
+	// something wrong
+	return
+    }
+    c.Used = false
+}
+
 func (s *SupplyLine)Run() {
     conn := s.back
     for {
@@ -69,6 +78,9 @@ func (s *SupplyLine)Run() {
 	case *msg.ConnectCommand:
 	    log.Printf("connect to %s [%d]\n", cmd.HostPort, cmd.ConnId)
 	    s.handleConnect(conn, cmd)
+	case *msg.DisconnectCommand:
+	    log.Printf("disconnect [%d]\n", cmd.ConnId)
+	    s.handleDisconnect(conn, cmd)
 	case *msg.UnknownCommand:
 	    log.Println("unknown command")
 	}

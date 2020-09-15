@@ -6,6 +6,7 @@ package msg
 const (
     linkCommand = iota
     connectCommand
+    disconnectCommand
 )
 
 type Command interface {
@@ -73,6 +74,30 @@ func (c *ConnectCommand)Name() string {
     return "ConnectCommand"
 }
 
+func PackedDisconnectCommand(connId int) []byte {
+    err := []byte{}
+    if connId >= 256 {
+	return err
+    }
+    buf := make([]byte, 2)
+    buf[0] = disconnectCommand
+    buf[1] = byte(connId)
+    return buf
+}
+
+type DisconnectCommand struct {
+    ConnId int
+}
+
+func ParseDisconnectCommand(buf []byte) *DisconnectCommand {
+    connId := int(buf[1])
+    return &DisconnectCommand{ ConnId: connId }
+}
+
+func (c *DisconnectCommand)Name() string {
+    return "DisconnectCommand"
+}
+
 type UnknownCommand struct {
 }
 
@@ -84,6 +109,7 @@ func ParseCommand(buf []byte) Command {
     switch buf[0] {
     case linkCommand: return ParseLinkCommand(buf)
     case connectCommand: return ParseConnectCommand(buf)
+    case disconnectCommand: return ParseDisconnectCommand(buf)
     }
     return &UnknownCommand{}
 }
