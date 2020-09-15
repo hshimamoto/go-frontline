@@ -6,6 +6,7 @@ package main
 import (
     "net"
     "os"
+    "time"
 
     "frontline/lib/connection"
     "frontline/lib/log"
@@ -63,33 +64,44 @@ func (s *SupplyLine)handleDisconnect(conn net.Conn, cmd *msg.DisconnectCommand) 
     c.Used = false
 }
 
+func (s *SupplyLine)handleCommand(conn net.Conn, cmd msg.Command) {
+    log.Printf("handle cmd: %s\n", cmd.Name())
+    switch cmd := cmd.(type) {
+    case *msg.LinkCommand:
+	log.Printf("link from %s\n", cmd.Client)
+    case *msg.ConnectCommand:
+	log.Printf("connect to %s [%d]\n", cmd.HostPort, cmd.ConnId)
+	s.handleConnect(conn, cmd)
+    case *msg.DisconnectCommand:
+	log.Printf("disconnect [%d]\n", cmd.ConnId)
+	s.handleDisconnect(conn, cmd)
+    case *msg.UnknownCommand:
+	log.Println("unknown command")
+    }
+    log.Println("handle command done")
+}
+
 func (s *SupplyLine)Run() {
     conn := s.back
     q_recv := make(chan msg.Command)
     q_wait := make(chan bool, 1)
     // start receiver
     go msg.Receiver(conn, q_recv, q_wait)
-    for {
+    running := true
+    for running {
 	log.Println("waiting cmd")
-	cmd, ok := <-q_recv
-	if !ok {
-	    break
+	select {
+	case cmd, ok := <-q_recv:
+	    if !ok {
+		log.Println("q_recv closed")
+		running = false
+		break
+	    }
+	    s.handleCommand(conn, cmd)
+	    q_wait <- true
+	case <-time.After(time.Minute):
+	    log.Println("timeout")
 	}
-	log.Printf("cmd: %s\n", cmd.Name())
-	switch cmd := cmd.(type) {
-	case *msg.LinkCommand:
-	    log.Printf("link from %s\n", cmd.Client)
-	case *msg.ConnectCommand:
-	    log.Printf("connect to %s [%d]\n", cmd.HostPort, cmd.ConnId)
-	    s.handleConnect(conn, cmd)
-	case *msg.DisconnectCommand:
-	    log.Printf("disconnect [%d]\n", cmd.ConnId)
-	    s.handleDisconnect(conn, cmd)
-	case *msg.UnknownCommand:
-	    log.Println("unknown command")
-	}
-	log.Println("handle done")
-	q_wait <- true
     }
 }
 
