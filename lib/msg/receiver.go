@@ -4,8 +4,9 @@
 package msg
 
 import (
-    "log"
     "net"
+
+    "frontline/lib/log"
 )
 
 func Receiver(conn net.Conn, q_recv chan Command, q_wait chan bool) {
