@@ -30,12 +30,18 @@ type LinkCommand struct {
     Client string
 }
 
-func ParseLinkCommand(buf []byte) *LinkCommand {
+func ParseLinkCommand(buf []byte) (*LinkCommand, int) {
+    if len(buf) < 2 {
+	return nil, 0
+    }
     c := &LinkCommand{}
     clen := int(buf[1])
     ptr := 2 + clen
+    if len(buf) < ptr {
+	return nil, 0
+    }
     c.Client = string(buf[2:ptr])
-    return c
+    return c, ptr
 }
 
 func (c *LinkCommand)Name() string {
@@ -64,10 +70,17 @@ type ConnectCommand struct {
     HostPort string
 }
 
-func ParseConnectCommand(buf []byte) *ConnectCommand {
+func ParseConnectCommand(buf []byte) (*ConnectCommand, int) {
+    if len(buf) < 3 {
+	return nil, 0
+    }
     connId := int(buf[1])
     hlen := int(buf[2])
-    return &ConnectCommand{ ConnId: connId, HostPort: string(buf[3:3+hlen]) }
+    ptr := 3 + hlen
+    if len(buf) < ptr {
+	return nil, 0
+    }
+    return &ConnectCommand{ ConnId: connId, HostPort: string(buf[3:3+hlen]) }, ptr
 }
 
 func (c *ConnectCommand)Name() string {
@@ -89,9 +102,12 @@ type DisconnectCommand struct {
     ConnId int
 }
 
-func ParseDisconnectCommand(buf []byte) *DisconnectCommand {
+func ParseDisconnectCommand(buf []byte) (*DisconnectCommand, int) {
+    if len(buf) < 2 {
+	return nil, 0
+    }
     connId := int(buf[1])
-    return &DisconnectCommand{ ConnId: connId }
+    return &DisconnectCommand{ ConnId: connId }, 2
 }
 
 func (c *DisconnectCommand)Name() string {
@@ -105,11 +121,11 @@ func (c *UnknownCommand)Name() string {
     return "UnknownCommand"
 }
 
-func ParseCommand(buf []byte) Command {
+func ParseCommand(buf []byte) (Command, int) {
     switch buf[0] {
     case linkCommand: return ParseLinkCommand(buf)
     case connectCommand: return ParseConnectCommand(buf)
     case disconnectCommand: return ParseDisconnectCommand(buf)
     }
-    return &UnknownCommand{}
+    return &UnknownCommand{}, 0
 }
