@@ -56,59 +56,14 @@ func (s *SupplyLine)handleDisconnect(conn net.Conn, cmd *msg.DisconnectCommand) 
     c.Used = false
 }
 
-func messageReceiver(conn net.Conn, q_recv chan msg.Command, q_wait chan bool) {
-    defer close(q_recv)
-    buf := make([]byte, 65536)
-    n := 0
-    for {
-	r, err := conn.Read(buf[n:])
-	if err != nil {
-	    log.Printf("Read: %v\n", err)
-	    return
-	}
-	if r == 0 {
-	    log.Println("no read")
-	    return
-	}
-	n += r
-	s := 0
-	nr := 0
-	for s < n {
-	    log.Printf("try to parse buf[%d:%d]\n", s, n)
-	    cmd, clen := msg.ParseCommand(buf[s:n])
-	    if cmd == nil {
-		log.Println("not enough buffer")
-		break
-	    }
-	    if clen == 0 {
-		// parse error
-		log.Println("parse error")
-		return
-	    }
-	    q_recv <- cmd
-	    nr++
-	    s += clen
-	}
-	for nr > 0 {
-	    // wait to finish command done
-	    <-q_wait
-	    nr--
-	}
-	if s < n {
-	    copy(buf, buf[s:n])
-	} else {
-	    n = 0
-	}
-    }
-}
-
 func (s *SupplyLine)Run() {
     conn := s.back
     q_recv := make(chan msg.Command)
     q_wait := make(chan bool, 1)
     // start receiver
-    go messageReceiver(conn, q_recv, q_wait)
+    go msg.Receiver(conn, q_recv, q_wait)
     for {
+	log.Println("waiting cmd")
 	cmd, ok := <-q_recv
 	if !ok {
 	    break
@@ -126,6 +81,7 @@ func (s *SupplyLine)Run() {
 	case *msg.UnknownCommand:
 	    log.Println("unknown command")
 	}
+	log.Println("handle done")
 	q_wait <- true
     }
 }
