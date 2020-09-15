@@ -45,6 +45,13 @@ func (s *SupplyLine)handleConnect(conn net.Conn, cmd *msg.ConnectCommand) {
     }
     c.Used = true
     c.HostPort = cmd.HostPort
+
+    // debug
+    if _, err := conn.Write(msg.PackedDisconnectCommand(cmd.ConnId)); err != nil {
+	log.Printf("failed to send Disconnect: %v\n", err)
+	return
+    }
+    c.Used = false
 }
 
 func (s *SupplyLine)handleDisconnect(conn net.Conn, cmd *msg.DisconnectCommand) {

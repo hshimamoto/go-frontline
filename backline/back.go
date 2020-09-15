@@ -109,10 +109,23 @@ func (s *SupplyLine)main(conn net.Conn) {
 	log.Printf("send command error: %v\n", err)
 	return
     }
-    for {
+    // now link is established, start receiver
+    q_recv := make(chan msg.Command)
+    q_wait := make(chan bool)
+    go msg.Receiver(conn, q_recv, q_wait)
+    running := true
+    for running {
 	select {
 	case cmd := <-s.q_req:
 	    conn.Write(cmd)
+	case cmd, ok := <-q_recv:
+	    if !ok {
+		log.Println("q_recv closed")
+		running = false
+		break
+	    }
+	    log.Printf("recv %s\n", cmd.Name())
+	    q_wait <- true
 	case <-time.After(time.Minute):
 	}
     }
