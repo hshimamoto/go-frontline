@@ -66,6 +66,8 @@ func (c *Connection)Run(conn net.Conn, q_req chan []byte) {
     cmd := msg.PackedConnectCommand(c.Id, w[1])
     q_req <- cmd
     // dummy
+    data := []byte("Hello")
+    q_req <- msg.PackedDataCommand(c.Id, data)
     time.Sleep(time.Second)
     q_req <- msg.PackedDisconnectCommand(c.Id)
     log.Printf("end connection %d\n", c.Id)

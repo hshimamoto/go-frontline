@@ -34,7 +34,7 @@ func Receiver(conn net.Conn, q_recv chan Command, q_wait chan bool) {
 	    }
 	    if clen == 0 {
 		// parse error
-		log.Println("parse error")
+		log.Printf("parse error: %v\n", buf[s:n])
 		return
 	    }
 	    log.Printf("Q <- %s\n", cmd.Name())

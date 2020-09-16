@@ -7,6 +7,7 @@ const (
     linkCommand = iota
     connectCommand
     disconnectCommand
+    dataCommand
 )
 
 type Command interface {
@@ -114,6 +115,56 @@ func (c *DisconnectCommand)Name() string {
     return "DisconnectCommand"
 }
 
+func PackedDataCommand(connId int, data []byte) []byte {
+    err := []byte{}
+    if connId >= 256 {
+	return err
+    }
+    datalen := len(data)
+    if datalen >= 32768 {
+	return err
+    }
+    msglen := 2 + 2 + datalen
+    buf := make([]byte, msglen)
+    buf[0] = dataCommand
+    buf[1] = byte(connId)
+    buf[2] = byte((datalen >> 8) & 0xff)
+    buf[3] = byte(datalen & 0xff)
+    // mask with 0xaa
+    for i := 0; i < datalen; i++ {
+	buf[i + 4] = data[i] ^ 0xaa
+    }
+    return buf
+}
+
+type DataCommand struct {
+    ConnId int
+    Data []byte
+}
+
+func ParseDataCommand(buf []byte) (*DataCommand, int) {
+    if len(buf) < 4 {
+	return nil, 0
+    }
+    connId := int(buf[1])
+    datalen := (int(buf[2]) << 8) | int(buf[3])
+    if len(buf) < 4 + datalen {
+	return nil, 0
+    }
+    c := &DataCommand{}
+    c.ConnId = connId
+    c.Data = make([]byte, datalen)
+    // mask with 0xaa
+    for i := 0; i < datalen; i++ {
+	c.Data[i] = buf[i + 4] ^ 0xaa
+    }
+    return c, 4 + datalen
+}
+
+func (c *DataCommand)Name() string {
+    return "DataCommand"
+}
+
 type UnknownCommand struct {
 }
 
@@ -126,6 +177,7 @@ func ParseCommand(buf []byte) (Command, int) {
     case linkCommand: return ParseLinkCommand(buf)
     case connectCommand: return ParseConnectCommand(buf)
     case disconnectCommand: return ParseDisconnectCommand(buf)
+    case dataCommand: return ParseDataCommand(buf)
     }
     return &UnknownCommand{}, 0
 }

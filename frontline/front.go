@@ -46,13 +46,6 @@ func (s *SupplyLine)handleConnect(conn net.Conn, cmd *msg.ConnectCommand) {
     }
     c.Used = true
     c.HostPort = cmd.HostPort
-
-    // debug
-    if _, err := conn.Write(msg.PackedDisconnectCommand(cmd.ConnId)); err != nil {
-	log.Printf("failed to send Disconnect: %v\n", err)
-	return
-    }
-    c.Used = false
 }
 
 func (s *SupplyLine)handleDisconnect(conn net.Conn, cmd *msg.DisconnectCommand) {
@@ -62,6 +55,20 @@ func (s *SupplyLine)handleDisconnect(conn net.Conn, cmd *msg.DisconnectCommand) 
 	return
     }
     c.Used = false
+}
+
+func (s *SupplyLine)handleData(conn net.Conn, cmd *msg.DataCommand) {
+    c := &s.connections[cmd.ConnId]
+    if !c.Used {
+	// something wrong
+	return
+    }
+    log.Printf("Data: %v\n", cmd.Data)
+
+    if _, err := conn.Write(msg.PackedDataCommand(c.Id, []byte("World"))); err != nil {
+	log.Printf("failed to send Data: %v\n", err)
+	return
+    }
 }
 
 func (s *SupplyLine)handleCommand(conn net.Conn, cmd msg.Command) {
@@ -75,6 +82,9 @@ func (s *SupplyLine)handleCommand(conn net.Conn, cmd msg.Command) {
     case *msg.DisconnectCommand:
 	log.Printf("disconnect [%d]\n", cmd.ConnId)
 	s.handleDisconnect(conn, cmd)
+    case *msg.DataCommand:
+	log.Printf("data [%d] %dbytes\n", cmd.ConnId, len(cmd.Data))
+	s.handleData(conn, cmd)
     case *msg.UnknownCommand:
 	log.Println("unknown command")
     }
