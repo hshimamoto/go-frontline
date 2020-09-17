@@ -21,7 +21,7 @@ type Connection struct {
     Used bool
     Next *Connection
     Conn net.Conn
-    Q chan *msg.Command
+    Q chan msg.Command
 }
 
 func (c *Connection)Run(conn net.Conn, q_req chan []byte) {
@@ -68,7 +68,13 @@ func (c *Connection)Run(conn net.Conn, q_req chan []byte) {
     // dummy
     data := []byte("Hello")
     q_req <- msg.PackedDataCommand(c.Id, data)
-    time.Sleep(time.Second)
+    // wait cmd
+    select {
+    case cmd := <-c.Q:
+	log.Printf("Connection %d get cmd %s\n", c.Id, cmd.Name())
+    case <-time.After(time.Second):
+    }
+    // disconnect
     q_req <- msg.PackedDisconnectCommand(c.Id)
     log.Printf("end connection %d\n", c.Id)
 }
@@ -92,7 +98,7 @@ func NewSupplyLine(front string) *SupplyLine {
 	conn.Id = i
 	conn.Used = false
 	conn.Next = prev
-	conn.Q = make(chan *msg.Command)
+	conn.Q = make(chan msg.Command)
 	prev = conn
     }
     s.free = prev
@@ -101,6 +107,12 @@ func NewSupplyLine(front string) *SupplyLine {
 }
 
 func (s *SupplyLine)handleData(conn net.Conn, cmd *msg.DataCommand) {
+    c := &s.connections[cmd.ConnId]
+    if !c.Used {
+	log.Printf("Data for unused connection %d\n", cmd.ConnId)
+	return
+    }
+    c.Q <- cmd
     log.Printf("Data: %v\n", cmd.Data)
 }
 
