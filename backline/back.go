@@ -100,6 +100,28 @@ func NewSupplyLine(front string) *SupplyLine {
     return s
 }
 
+func (s *SupplyLine)handleData(conn net.Conn, cmd *msg.DataCommand) {
+    log.Printf("Data: %v\n", cmd.Data)
+}
+
+func (s *SupplyLine)handleCommand(conn net.Conn, cmd msg.Command) {
+    log.Printf("handle cmd: %s\n", cmd.Name())
+    switch cmd := cmd.(type) {
+    case *msg.LinkCommand:
+	log.Printf("link from %s\n", cmd.Client)
+    case *msg.ConnectCommand:
+	log.Printf("connect to %s [%d]\n", cmd.HostPort, cmd.ConnId)
+    case *msg.DisconnectCommand:
+	log.Printf("disconnect [%d]\n", cmd.ConnId)
+    case *msg.DataCommand:
+	log.Printf("data [%d] %dbytes\n", cmd.ConnId, len(cmd.Data))
+	s.handleData(conn, cmd)
+    case *msg.UnknownCommand:
+	log.Println("unknown command")
+    }
+    log.Println("handle command done")
+}
+
 func (s *SupplyLine)main(conn net.Conn) {
     hostname, err := os.Hostname()
     if err != nil {
@@ -127,6 +149,7 @@ func (s *SupplyLine)main(conn net.Conn) {
 		break
 	    }
 	    log.Printf("recv %s\n", cmd.Name())
+	    s.handleCommand(conn, cmd)
 	    q_wait <- true
 	case <-time.After(time.Minute):
 	}
