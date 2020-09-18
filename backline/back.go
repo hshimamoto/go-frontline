@@ -115,11 +115,11 @@ func (c *Connection)Run(conn net.Conn, q_req chan []byte) {
 		log.Printf("Connection %d: local read %d bytes\n", c.Id, r)
 		// send data
 		q_req <- msg.PackedDataCommand(c.Id, 0, lbuf[:r])
-		q_lwait <- true
 	    } else {
 		// local closed
 		log.Println("local connection closed")
 	    }
+	    q_lwait <- true
 	case <-time.After(time.Minute):
 	    // periodic
 	}
