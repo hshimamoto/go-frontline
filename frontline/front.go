@@ -63,9 +63,9 @@ func (s *SupplyLine)handleData(conn net.Conn, cmd *msg.DataCommand) {
 	// something wrong
 	return
     }
-    log.Printf("Data: %v\n", cmd.Data)
+    log.Printf("Data: %d %v\n", cmd.Seq, cmd.Data)
 
-    if _, err := conn.Write(msg.PackedDataCommand(c.Id, []byte("World"))); err != nil {
+    if _, err := conn.Write(msg.PackedDataCommand(c.Id, 0, []byte("World"))); err != nil {
 	log.Printf("failed to send Data: %v\n", err)
 	return
     }

@@ -67,7 +67,7 @@ func (c *Connection)Run(conn net.Conn, q_req chan []byte) {
     q_req <- cmd
     // dummy
     data := []byte("Hello")
-    q_req <- msg.PackedDataCommand(c.Id, data)
+    q_req <- msg.PackedDataCommand(c.Id, 0, data)
     // wait cmd
     select {
     case cmd := <-c.Q:
@@ -113,7 +113,7 @@ func (s *SupplyLine)handleData(conn net.Conn, cmd *msg.DataCommand) {
 	return
     }
     c.Q <- cmd
-    log.Printf("Data: %v\n", cmd.Data)
+    log.Printf("Data: %d %v\n", cmd.Seq, cmd.Data)
 }
 
 func (s *SupplyLine)handleCommand(conn net.Conn, cmd msg.Command) {
