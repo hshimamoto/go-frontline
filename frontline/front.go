@@ -22,6 +22,60 @@ type Connection struct {
     Q chan msg.Command
 }
 
+func (c *Connection)Run(conn net.Conn, q_req chan []byte) {
+    // TODO: this is adhoc implement
+    lbuf := make([]byte, 8192)
+    q_lread := make(chan int)
+    q_lwait := make(chan bool)
+    // start reading
+    go func() {
+	for c.LocalLive {
+	    r, err := conn.Read(lbuf)
+	    if err != nil {
+		log.Printf("Connection %d: Read: %v\n", c.Id, err)
+		break
+	    }
+	    if r == 0 {
+		log.Printf("Connection %d: closed\n", c.Id)
+		break
+	    }
+	    // send
+	    q_lread <- r
+	    // wait handled
+	    <-q_lwait
+	}
+	q_lread <- 0
+	<-q_lwait
+	c.LocalLive = false
+    }()
+    // start main loop
+    for {
+	select {
+	case cmd := <-c.Q:
+	    // recv data command
+	    switch cmd := cmd.(type) {
+	    case *msg.DataCommand:
+		// send to local connection
+		conn.Write(cmd.Data)
+	    }
+	case r := <-q_lread:
+	    if r > 0 {
+		log.Printf("Connection %d: local read %d bytes\n", c.Id, r)
+		// send data
+		q_req <- msg.PackedDataCommand(c.Id, 0, lbuf[:r])
+	    } else {
+		// local closed
+		log.Println("local connection closed")
+		// send Disconnect
+		q_req <- msg.PackedDisconnectCommand(c.Id)
+	    }
+	    q_lwait <- true
+	case <-time.After(time.Minute):
+	    // periodic
+	}
+    }
+}
+
 type SupplyLine struct {
     back net.Conn
     connections []Connection
@@ -61,58 +115,10 @@ func (s *SupplyLine)handleConnect(conn net.Conn, cmd *msg.ConnectCommand) {
 	return
     }
     c.LocalLive = true
-    // TODO: this is adhoc implement
-    lbuf := make([]byte, 8192)
-    q_lread := make(chan int)
-    q_lwait := make(chan bool)
-    // start reading
-    go func() {
-	for c.LocalLive {
-	    r, err := lconn.Read(lbuf)
-	    if err != nil {
-		log.Printf("Connection %d: Read: %v\n", c.Id, err)
-		break
-	    }
-	    if r == 0 {
-		log.Printf("Connection %d: closed\n", c.Id)
-		break
-	    }
-	    // send
-	    q_lread <- r
-	    // wait handled
-	    <-q_lwait
-	}
-	q_lread <- 0
-	<-q_lwait
-	c.LocalLive = false
-    }()
-    // start main loop
-    go func() {
-	for {
-	    select {
-	    case cmd := <-c.Q:
-		// recv data command
-		switch cmd := cmd.(type) {
-		case *msg.DataCommand:
-		    // send to local connection
-		    lconn.Write(cmd.Data)
-		}
-	    case r := <-q_lread:
-		if r > 0 {
-		    log.Printf("Connection %d: local read %d bytes\n", c.Id, r)
-		    // send data
-		    s.q_req <- msg.PackedDataCommand(c.Id, 0, lbuf[:r])
-		} else {
-		    // local closed
-		    log.Println("local connection closed")
-		    // send Disconnect
-		    s.q_req <- msg.PackedDisconnectCommand(c.Id)
-		}
-		q_lwait <- true
-	    case <-time.After(time.Minute):
-		// periodic
-	    }
-	}
+
+    go func () {
+	defer lconn.Close()
+	c.Run(lconn, s.q_req)
     }()
 }
 
