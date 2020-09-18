@@ -25,6 +25,7 @@ type Connection struct {
 type SupplyLine struct {
     back net.Conn
     connections []Connection
+    q_req chan []byte
 }
 
 func NewSupplyLine(conn net.Conn) (*SupplyLine, error) {
@@ -38,6 +39,7 @@ func NewSupplyLine(conn net.Conn) (*SupplyLine, error) {
 	conn.Used = false
 	conn.Q = make(chan msg.Command)
     }
+    s.q_req = make(chan []byte)
     return s, nil
 }
 
@@ -99,16 +101,14 @@ func (s *SupplyLine)handleConnect(conn net.Conn, cmd *msg.ConnectCommand) {
 		if r > 0 {
 		    log.Printf("Connection %d: local read %d bytes\n", c.Id, r)
 		    // send data
-		    // TODO: pass to main handler
-		    conn.Write(msg.PackedDataCommand(c.Id, 0, lbuf[:r]))
-		    q_lwait <- true
+		    s.q_req <- msg.PackedDataCommand(c.Id, 0, lbuf[:r])
 		} else {
 		    // local closed
 		    log.Println("local connection closed")
 		    // send Disconnect
-		    // TODO: pass to main handler
-		    conn.Write(msg.PackedDisconnectCommand(c.Id))
+		    s.q_req <- msg.PackedDisconnectCommand(c.Id)
 		}
+		q_lwait <- true
 	    case <-time.After(time.Minute):
 		// periodic
 	    }
@@ -173,6 +173,8 @@ func (s *SupplyLine)Run() {
 	    }
 	    s.handleCommand(conn, cmd)
 	    q_wait <- true
+	case cmd := <-s.q_req:
+	    conn.Write(cmd)
 	case <-time.After(time.Minute):
 	    log.Println("timeout")
 	}
