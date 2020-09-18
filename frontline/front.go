@@ -18,6 +18,8 @@ type Connection struct {
     Id int
     Used bool
     HostPort string
+    LocalLive, RemoteLive bool
+    Q chan msg.Command
 }
 
 type SupplyLine struct {
@@ -34,6 +36,7 @@ func NewSupplyLine(conn net.Conn) (*SupplyLine, error) {
 	conn := &s.connections[i]
 	conn.Id = i
 	conn.Used = false
+	conn.Q = make(chan msg.Command)
     }
     return s, nil
 }
@@ -46,6 +49,71 @@ func (s *SupplyLine)handleConnect(conn net.Conn, cmd *msg.ConnectCommand) {
     }
     c.Used = true
     c.HostPort = cmd.HostPort
+    c.RemoteLive = true
+    // try to connect
+    lconn, err := session.Dial(c.HostPort)
+    if err != nil {
+	log.Printf("Connection %d: Dial: %v\n", cmd.ConnId, err)
+	conn.Write(msg.PackedDisconnectCommand(cmd.ConnId))
+	c.Used = false
+	return
+    }
+    c.LocalLive = true
+    // TODO: this is adhoc implement
+    lbuf := make([]byte, 8192)
+    q_lread := make(chan int)
+    q_lwait := make(chan bool)
+    // start reading
+    go func() {
+	for c.LocalLive {
+	    r, err := lconn.Read(lbuf)
+	    if err != nil {
+		log.Printf("Connection %d: Read: %v\n", c.Id, err)
+		break
+	    }
+	    if r == 0 {
+		log.Printf("Connection %d: closed\n", c.Id)
+		break
+	    }
+	    // send
+	    q_lread <- r
+	    // wait handled
+	    <-q_lwait
+	}
+	q_lread <- 0
+	<-q_lwait
+	c.LocalLive = false
+    }()
+    // start main loop
+    go func() {
+	for {
+	    select {
+	    case cmd := <-c.Q:
+		// recv data command
+		switch cmd := cmd.(type) {
+		case *msg.DataCommand:
+		    // send to local connection
+		    lconn.Write(cmd.Data)
+		}
+	    case r := <-q_lread:
+		if r > 0 {
+		    log.Printf("Connection %d: local read %d bytes\n", c.Id, r)
+		    // send data
+		    // TODO: pass to main handler
+		    conn.Write(msg.PackedDataCommand(c.Id, 0, lbuf[:r]))
+		    q_lwait <- true
+		} else {
+		    // local closed
+		    log.Println("local connection closed")
+		    // send Disconnect
+		    // TODO: pass to main handler
+		    conn.Write(msg.PackedDisconnectCommand(c.Id))
+		}
+	    case <-time.After(time.Minute):
+		// periodic
+	    }
+	}
+    }()
 }
 
 func (s *SupplyLine)handleDisconnect(conn net.Conn, cmd *msg.DisconnectCommand) {
@@ -64,11 +132,7 @@ func (s *SupplyLine)handleData(conn net.Conn, cmd *msg.DataCommand) {
 	return
     }
     log.Printf("Data: %d %v\n", cmd.Seq, cmd.Data)
-
-    if _, err := conn.Write(msg.PackedDataCommand(c.Id, 0, []byte("World"))); err != nil {
-	log.Printf("failed to send Data: %v\n", err)
-	return
-    }
+    c.Q <- cmd
 }
 
 func (s *SupplyLine)handleCommand(conn net.Conn, cmd msg.Command) {
