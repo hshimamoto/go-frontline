@@ -27,14 +27,12 @@ type Connection struct {
     Q chan msg.Command
 }
 
-func (c *Connection)Run(conn net.Conn, q_req chan []byte) {
-    log.Printf("start connection %d\n", c.Id)
-    // get CONNECT request
+func waitHTTPConnect(conn net.Conn) (string, error) {
     buf := make([]byte, 256)
     n, err := conn.Read(buf)
     if err != nil {
 	log.Printf("Read: %v\n", err)
-	return
+	return "", err
     }
     for {
 	if bytes.Index(buf, []byte{13, 10, 13, 10}) > 0 {
@@ -43,30 +41,40 @@ func (c *Connection)Run(conn net.Conn, q_req chan []byte) {
 	r, err := conn.Read(buf[n:n+1])
 	if err != nil {
 	    log.Printf("Read: %v\n", err)
-	    return
+	    return "", err
 	}
 	if r == 0 {
 	    log.Println("no Read\n")
-	    return
+	    return "", fmt.Errorf("no Read")
 	}
 	n += r
 	if n >= 256 {
 	    log.Println("header too long")
-	    return
+	    return "", fmt.Errorf("request header too long")
 	}
     }
     lines := strings.Split(string(buf[:n]), "\r\n")
     w := strings.Split(lines[0], " ")
     if len(w) < 3 {
 	log.Println("bad request")
-	return
+	return "", fmt.Errorf("bad request")
     }
     if w[0] != "CONNECT" {
 	log.Printf("uknown request method %s\n", w[0])
+	return "", fmt.Errorf("unknown request method %s", w[0])
+    }
+    return w[1], nil
+}
+
+func (c *Connection)Run(conn net.Conn, q_req chan []byte) {
+    log.Printf("start connection %d\n", c.Id)
+    // get CONNECT request
+    hostport, err := waitHTTPConnect(conn)
+    if err != nil {
 	return
     }
-    log.Printf("CONNECT %s\n", w[1])
-    cmd := msg.PackedConnectCommand(c.Id, w[1])
+    log.Printf("CONNECT %s\n", hostport)
+    cmd := msg.PackedConnectCommand(c.Id, hostport)
     q_req <- cmd
 
     // now connected
