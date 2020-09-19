@@ -23,7 +23,10 @@ func PackedLinkCommand(client string) []byte {
     buf := make([]byte, len(client) + 2)
     buf[0] = linkCommand
     buf[1] = byte(clen)
-    copy(buf[2:], client)
+    // mask with 0xaa
+    for i, b := range []byte(client) {
+	buf[i + 2] = b ^ 0xaa
+    }
     return buf
 }
 
@@ -41,7 +44,10 @@ func ParseLinkCommand(buf []byte) (*LinkCommand, int) {
     if len(buf) < ptr {
 	return nil, 0
     }
-    c.Client = string(buf[2:ptr])
+    c.Client = ""
+    for i := 0; i < clen; i++ {
+	c.Client += string(buf[i + 2] ^ 0xaa)
+    }
     return c, ptr
 }
 
@@ -62,7 +68,10 @@ func PackedConnectCommand(connId int, hostport string) []byte {
     buf[0] = connectCommand
     buf[1] = byte(connId)
     buf[2] = byte(hlen)
-    copy(buf[3:], hostport)
+    // mask with 0xaa
+    for i, b := range []byte(hostport) {
+	buf[i + 3] = b ^ 0xaa
+    }
     return buf
 }
 
@@ -81,7 +90,13 @@ func ParseConnectCommand(buf []byte) (*ConnectCommand, int) {
     if len(buf) < ptr {
 	return nil, 0
     }
-    return &ConnectCommand{ ConnId: connId, HostPort: string(buf[3:3+hlen]) }, ptr
+    c := &ConnectCommand{}
+    c.ConnId = connId
+    c.HostPort = ""
+    for i := 0; i < hlen; i++ {
+	c.HostPort += string(buf[i + 3] ^ 0xaa)
+    }
+    return c, ptr
 }
 
 func (c *ConnectCommand)Name() string {
