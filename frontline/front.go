@@ -49,7 +49,8 @@ func (c *Connection)Run(conn net.Conn, q_req chan []byte) {
 	c.LocalLive = false
     }()
     // start main loop
-    for {
+    running := true
+    for running {
 	select {
 	case cmd := <-c.Q:
 	    // recv data command
@@ -57,6 +58,10 @@ func (c *Connection)Run(conn net.Conn, q_req chan []byte) {
 	    case *msg.DataCommand:
 		// send to local connection
 		conn.Write(cmd.Data)
+	    case *msg.DisconnectCommand:
+		// disconnect from remote
+		c.RemoteLive = false
+		running = false
 	    }
 	case r := <-q_lread:
 	    if r > 0 {
@@ -68,6 +73,8 @@ func (c *Connection)Run(conn net.Conn, q_req chan []byte) {
 		log.Println("local connection closed")
 		// send Disconnect
 		q_req <- msg.PackedDisconnectCommand(c.Id)
+		c.RemoteLive = false
+		running = false
 	    }
 	    q_lwait <- true
 	case <-time.After(time.Minute):
@@ -128,6 +135,7 @@ func (s *SupplyLine)handleDisconnect(conn net.Conn, cmd *msg.DisconnectCommand) 
 	// something wrong
 	return
     }
+    c.Q <- cmd
     c.Used = false
 }
 

@@ -100,7 +100,8 @@ func (c *Connection)Run(conn net.Conn, q_req chan []byte) {
 	c.LocalLive = false
     }()
     // start main loop
-    for {
+    running := true
+    for running {
 	select {
 	case cmd := <-c.Q:
 	    // recv data command
@@ -109,6 +110,10 @@ func (c *Connection)Run(conn net.Conn, q_req chan []byte) {
 		log.Printf("Data: %d %v\n", cmd.Seq, cmd.Data)
 		// send to local connection
 		conn.Write(cmd.Data)
+	    case *msg.DisconnectCommand:
+		// disconnect from remote
+		c.RemoteLive = false
+		running = false
 	    }
 	case r := <-q_lread:
 	    if r > 0 {
@@ -118,14 +123,16 @@ func (c *Connection)Run(conn net.Conn, q_req chan []byte) {
 	    } else {
 		// local closed
 		log.Println("local connection closed")
+		// send Disconnect
+		q_req <- msg.PackedDisconnectCommand(c.Id)
+		c.RemoteLive = false
+		running = false
 	    }
 	    q_lwait <- true
 	case <-time.After(time.Minute):
 	    // periodic
 	}
     }
-    // disconnect
-    q_req <- msg.PackedDisconnectCommand(c.Id)
     log.Printf("end connection %d\n", c.Id)
 }
 
@@ -156,6 +163,15 @@ func NewSupplyLine(front string) *SupplyLine {
     return s
 }
 
+func (s *SupplyLine)handleDisconnect(conn net.Conn, cmd *msg.DisconnectCommand) {
+    c := &s.connections[cmd.ConnId]
+    if !c.Used {
+	log.Printf("Data for unused connection %d\n", cmd.ConnId)
+	return
+    }
+    c.Q <- cmd
+}
+
 func (s *SupplyLine)handleData(conn net.Conn, cmd *msg.DataCommand) {
     c := &s.connections[cmd.ConnId]
     if !c.Used {
@@ -174,6 +190,7 @@ func (s *SupplyLine)handleCommand(conn net.Conn, cmd msg.Command) {
 	log.Printf("connect to %s [%d]\n", cmd.HostPort, cmd.ConnId)
     case *msg.DisconnectCommand:
 	log.Printf("disconnect [%d]\n", cmd.ConnId)
+	s.handleDisconnect(conn, cmd)
     case *msg.DataCommand:
 	log.Printf("data [%d] %dbytes\n", cmd.ConnId, len(cmd.Data))
 	s.handleData(conn, cmd)
