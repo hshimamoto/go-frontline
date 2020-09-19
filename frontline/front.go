@@ -19,7 +19,6 @@ import (
 type Connection struct {
     Id int
     Used bool
-    HostPort string
     Q chan msg.Command
 }
 
@@ -57,9 +56,9 @@ func (s *SupplyLine)handleConnect(conn net.Conn, cmd *msg.ConnectCommand) {
 	return
     }
     c.Used = true
-    c.HostPort = cmd.HostPort
+    hostport := cmd.HostPort
     // try to connect
-    lconn, err := session.Dial(c.HostPort)
+    lconn, err := session.Dial(hostport)
     if err != nil {
 	log.Printf("Connection %d: Dial: %v\n", cmd.ConnId, err)
 	conn.Write(msg.PackedDisconnectCommand(cmd.ConnId))
