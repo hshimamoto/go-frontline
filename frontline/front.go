@@ -24,43 +24,9 @@ type Connection struct {
 }
 
 func (c *Connection)Run(conn net.Conn, q_req chan []byte) {
-    // TODO: this is adhoc implement
-    buf := make([]byte, 8192)
-    q_lread := make(chan int)
-    q_lwait := make(chan bool)
-    // start reading
-    go misc.LocalReader(c.Id, conn, buf, q_lread, q_lwait)
-    // start main loop
-    running := true
-    for running {
-	select {
-	case cmd := <-c.Q:
-	    // recv data command
-	    switch cmd := cmd.(type) {
-	    case *msg.DataCommand:
-		// send to local connection
-		conn.Write(cmd.Data)
-	    case *msg.DisconnectCommand:
-		// disconnect from remote
-		running = false
-	    }
-	case r := <-q_lread:
-	    if r > 0 {
-		log.Printf("Connection %d: local read %d bytes\n", c.Id, r)
-		// send data
-		q_req <- msg.PackedDataCommand(c.Id, 0, buf[:r])
-	    } else {
-		// local closed
-		log.Println("local connection closed")
-		// send Disconnect
-		q_req <- msg.PackedDisconnectCommand(c.Id)
-		running = false
-	    }
-	    q_lwait <- true
-	case <-time.After(time.Minute):
-	    // periodic
-	}
-    }
+    log.Printf("start connection %d\n", c.Id)
+    misc.ConnectionRun(c.Id, conn, c.Q, q_req)
+    log.Printf("end connection %d\n", c.Id)
 }
 
 type SupplyLine struct {
