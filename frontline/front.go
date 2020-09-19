@@ -75,7 +75,7 @@ func (s *SupplyLine)handleData(conn net.Conn, cmd *msg.DataCommand) {
 	// something wrong
 	return
     }
-    log.Printf("Data: %d %v\n", cmd.Seq, cmd.Data)
+    //log.Printf("Data: %d %v\n", cmd.Seq, cmd.Data)
     c.Q <- cmd
 }
 
