@@ -4,24 +4,23 @@
 package msg
 
 import (
+    "fmt"
     "net"
 
     "frontline/lib/log"
 )
 
-func Receiver(conn net.Conn, q_recv chan Command, q_wait chan bool) {
+func Receiver(conn net.Conn, q_recv chan Command, q_wait chan bool) error {
     defer close(q_recv)
     buf := make([]byte, 65536)
     n := 0
     for {
 	r, err := conn.Read(buf[n:])
 	if err != nil {
-	    log.Printf("Read: %v\n", err)
-	    return
+	    return err
 	}
 	if r == 0 {
-	    log.Println("no read")
-	    return
+	    return fmt.Errorf("no read")
 	}
 	n += r
 	s := 0
@@ -34,8 +33,7 @@ func Receiver(conn net.Conn, q_recv chan Command, q_wait chan bool) {
 	    }
 	    if clen == 0 {
 		// parse error
-		log.Printf("parse error: %v\n", buf[s:n])
-		return
+		return fmt.Errorf("command parse error: %v\n", buf[s:n])
 	    }
 	    log.Printf("Q <- %s\n", cmd.Name())
 	    q_recv <- cmd

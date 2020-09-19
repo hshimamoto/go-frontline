@@ -107,7 +107,11 @@ func (s *SupplyLine)Run() {
     q_recv := make(chan msg.Command)
     q_wait := make(chan bool, 1)
     // start receiver
-    go msg.Receiver(conn, q_recv, q_wait)
+    go func() {
+	err := msg.Receiver(conn, q_recv, q_wait)
+	log.Printf("Receiver: %v\n", err)
+	close(q_wait)
+    }()
     running := true
     for running {
 	log.Println("waiting cmd")

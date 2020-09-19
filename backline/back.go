@@ -134,8 +134,13 @@ func (s *SupplyLine)main(conn net.Conn) {
     }
     // now link is established, start receiver
     q_recv := make(chan msg.Command)
-    q_wait := make(chan bool)
-    go msg.Receiver(conn, q_recv, q_wait)
+    q_wait := make(chan bool, 1)
+    // start receiver
+    go func() {
+	err := msg.Receiver(conn, q_recv, q_wait)
+	log.Printf("Receiver: %v\n", err)
+	close(q_wait)
+    }()
     running := true
     for running {
 	select {
