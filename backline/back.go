@@ -11,6 +11,7 @@ import (
     "strings"
     "time"
 
+    "frontline/lib/connection"
     "frontline/lib/log"
     "frontline/lib/msg"
     "github.com/hshimamoto/go-session"
@@ -252,6 +253,9 @@ func (s *SupplyLine)Connect(conn net.Conn) {
 	log.Println("no free connection slot")
 	conn.Close()
 	return
+    }
+    if err := connection.EnableKeepAlive(conn); err != nil {
+	log.Printf("enable keepalive: %v\n", err)
     }
     // get one
     c := s.free
