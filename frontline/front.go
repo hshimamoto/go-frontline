@@ -18,12 +18,11 @@ type Connection struct {
     Id int
     Used bool
     HostPort string
-    LocalLive, RemoteLive bool
     Q chan msg.Command
 }
 
 func (c *Connection)LocalReader(conn net.Conn, buf []byte, q_lread chan int, q_lwait chan bool) {
-    for c.LocalLive {
+    for {
 	r, err := conn.Read(buf)
 	if err != nil {
 	    log.Printf("Connection %d: Read: %v\n", c.Id, err)
@@ -40,7 +39,6 @@ func (c *Connection)LocalReader(conn net.Conn, buf []byte, q_lread chan int, q_l
     }
     q_lread <- 0
     <-q_lwait
-    c.LocalLive = false
 }
 
 func (c *Connection)Run(conn net.Conn, q_req chan []byte) {
@@ -62,7 +60,6 @@ func (c *Connection)Run(conn net.Conn, q_req chan []byte) {
 		conn.Write(cmd.Data)
 	    case *msg.DisconnectCommand:
 		// disconnect from remote
-		c.RemoteLive = false
 		running = false
 	    }
 	case r := <-q_lread:
@@ -75,7 +72,6 @@ func (c *Connection)Run(conn net.Conn, q_req chan []byte) {
 		log.Println("local connection closed")
 		// send Disconnect
 		q_req <- msg.PackedDisconnectCommand(c.Id)
-		c.RemoteLive = false
 		running = false
 	    }
 	    q_lwait <- true
@@ -114,7 +110,6 @@ func (s *SupplyLine)handleConnect(conn net.Conn, cmd *msg.ConnectCommand) {
     }
     c.Used = true
     c.HostPort = cmd.HostPort
-    c.RemoteLive = true
     // try to connect
     lconn, err := session.Dial(c.HostPort)
     if err != nil {
@@ -123,7 +118,6 @@ func (s *SupplyLine)handleConnect(conn net.Conn, cmd *msg.ConnectCommand) {
 	c.Used = false
 	return
     }
-    c.LocalLive = true
 
     go func () {
 	defer lconn.Close()
