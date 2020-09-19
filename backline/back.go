@@ -23,7 +23,6 @@ type Connection struct {
     Id int
     Used bool
     Next *Connection
-    Conn net.Conn
     Q chan msg.Command
 }
 
@@ -68,20 +67,6 @@ func waitHTTPConnect(conn net.Conn) (string, error) {
 
 func (c *Connection)Run(conn net.Conn, q_req chan []byte) {
     log.Printf("start connection %d\n", c.Id)
-    // get CONNECT request
-    hostport, err := waitHTTPConnect(conn)
-    if err != nil {
-	return
-    }
-    log.Printf("CONNECT %s\n", hostport)
-    cmd := msg.PackedConnectCommand(c.Id, hostport)
-    q_req <- cmd
-
-    // now connected
-
-    // established
-    conn.Write([]byte("HTTP/1.0 200 Established\r\n\r\n"))
-
     misc.ConnectionRun(c.Id, conn, c.Q, q_req)
     log.Printf("end connection %d\n", c.Id)
 }
@@ -206,11 +191,24 @@ func (s *SupplyLine)Connect(conn net.Conn) {
     if err := connection.EnableKeepAlive(conn); err != nil {
 	log.Printf("enable keepalive: %v\n", err)
     }
+    hostport, err := waitHTTPConnect(conn)
+    if err != nil {
+	conn.Close()
+	return
+    }
+    log.Printf("CONNECT %s\n", hostport)
+
     // get one
     c := s.free
     s.free = s.free.Next
     // mark it used
     c.Used = true
+
+    cmd := msg.PackedConnectCommand(c.Id, hostport)
+    s.q_req <- cmd
+    // send back established response in HTTP CONNECT METHOD
+    conn.Write([]byte("HTTP/1.0 200 Established\r\n\r\n"))
+
     go func() {
 	defer conn.Close()
 	c.Run(conn, s.q_req)
