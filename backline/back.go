@@ -14,17 +14,9 @@ import (
     "frontline/lib/connection"
     "frontline/lib/log"
     "frontline/lib/msg"
-    "frontline/lib/misc"
 
     "github.com/hshimamoto/go-session"
 )
-
-type Connection struct {
-    Id int
-    Used bool
-    Next *Connection
-    Q chan msg.Command
-}
 
 func waitHTTPConnect(conn net.Conn) (string, error) {
     buf := make([]byte, 256)
@@ -65,16 +57,10 @@ func waitHTTPConnect(conn net.Conn) (string, error) {
     return w[1], nil
 }
 
-func (c *Connection)Run(conn net.Conn, q_req chan []byte) {
-    log.Printf("start connection %d\n", c.Id)
-    misc.ConnectionRun(c.Id, conn, c.Q, q_req)
-    log.Printf("end connection %d\n", c.Id)
-}
-
 type SupplyLine struct {
     front string
-    connections []Connection
-    free *Connection
+    connections []msg.Connection
+    free *msg.Connection
     q_req chan []byte
 }
 
@@ -82,9 +68,9 @@ func NewSupplyLine(front string) *SupplyLine {
     s := &SupplyLine{
 	front: front,
     }
-    s.connections = make([]Connection, 256)
+    s.connections = make([]msg.Connection, 256)
     // initialize
-    var prev *Connection = nil
+    var prev *msg.Connection = nil
     for i := 0; i < 256; i++ {
 	conn := &s.connections[i]
 	conn.Id = i

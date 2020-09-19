@@ -11,26 +11,13 @@ import (
     "frontline/lib/connection"
     "frontline/lib/log"
     "frontline/lib/msg"
-    "frontline/lib/misc"
 
     "github.com/hshimamoto/go-session"
 )
 
-type Connection struct {
-    Id int
-    Used bool
-    Q chan msg.Command
-}
-
-func (c *Connection)Run(conn net.Conn, q_req chan []byte) {
-    log.Printf("start connection %d\n", c.Id)
-    misc.ConnectionRun(c.Id, conn, c.Q, q_req)
-    log.Printf("end connection %d\n", c.Id)
-}
-
 type SupplyLine struct {
     back net.Conn
-    connections []Connection
+    connections []msg.Connection
     q_req chan []byte
 }
 
@@ -38,7 +25,7 @@ func NewSupplyLine(conn net.Conn) (*SupplyLine, error) {
     s := &SupplyLine{
 	back: conn,
     }
-    s.connections = make([]Connection, 256)
+    s.connections = make([]msg.Connection, 256)
     for i := 0; i < 256; i++ {
 	conn := &s.connections[i]
 	conn.Id = i
