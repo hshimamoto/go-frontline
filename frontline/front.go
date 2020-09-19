@@ -11,6 +11,8 @@ import (
     "frontline/lib/connection"
     "frontline/lib/log"
     "frontline/lib/msg"
+    "frontline/lib/misc"
+
     "github.com/hshimamoto/go-session"
 )
 
@@ -21,33 +23,13 @@ type Connection struct {
     Q chan msg.Command
 }
 
-func (c *Connection)LocalReader(conn net.Conn, buf []byte, q_lread chan int, q_lwait chan bool) {
-    for {
-	r, err := conn.Read(buf)
-	if err != nil {
-	    log.Printf("Connection %d: Read: %v\n", c.Id, err)
-	    break
-	}
-	if r == 0 {
-	    log.Printf("Connection %d: closed\n", c.Id)
-	    break
-	}
-	// send
-	q_lread <- r
-	// wait handled
-	<-q_lwait
-    }
-    q_lread <- 0
-    <-q_lwait
-}
-
 func (c *Connection)Run(conn net.Conn, q_req chan []byte) {
     // TODO: this is adhoc implement
     buf := make([]byte, 8192)
     q_lread := make(chan int)
     q_lwait := make(chan bool)
     // start reading
-    go c.LocalReader(conn, buf, q_lread, q_lwait)
+    go misc.LocalReader(c.Id, conn, buf, q_lread, q_lwait)
     // start main loop
     running := true
     for running {
