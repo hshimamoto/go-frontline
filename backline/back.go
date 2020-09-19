@@ -84,6 +84,15 @@ func NewSupplyLine(front string) *SupplyLine {
     return s
 }
 
+func (s *SupplyLine)handleConnectAck(conn net.Conn, cmd *msg.ConnectAckCommand) {
+    c := &s.connections[cmd.ConnId]
+    if !c.Used {
+	log.Printf("Ack for unused connection %d\n", cmd.ConnId)
+	return
+    }
+    c.Q <- cmd
+}
+
 func (s *SupplyLine)handleDisconnect(conn net.Conn, cmd *msg.DisconnectCommand) {
     c := &s.connections[cmd.ConnId]
     if !c.Used {
@@ -109,6 +118,9 @@ func (s *SupplyLine)handleCommand(conn net.Conn, cmd msg.Command) {
 	log.Printf("link from %s\n", cmd.Client)
     case *msg.ConnectCommand:
 	log.Printf("connect to %s [%d]\n", cmd.HostPort, cmd.ConnId)
+    case *msg.ConnectAckCommand:
+	log.Printf("connectack [%d] %v\n", cmd.ConnId, cmd.Ok)
+	s.handleConnectAck(conn, cmd)
     case *msg.DisconnectCommand:
 	log.Printf("disconnect [%d]\n", cmd.ConnId)
 	s.handleDisconnect(conn, cmd)
@@ -198,6 +210,22 @@ func (s *SupplyLine)Connect(conn net.Conn) {
 
     cmd := msg.PackedConnectCommand(c.Id, hostport)
     s.q_req <- cmd
+
+    result := false
+    select {
+    case ack := <-c.Q:
+	if ack, ok := ack.(*msg.ConnectAckCommand); ok {
+	    result = ack.Ok
+	}
+    case <-time.After(10 * time.Second):
+    }
+
+    if !result {
+	// send back established response in HTTP CONNECT METHOD
+	conn.Write([]byte("HTTP/1.0 400 Bad Request\r\n\r\n"))
+	return
+    }
+
     // send back established response in HTTP CONNECT METHOD
     conn.Write([]byte("HTTP/1.0 200 Established\r\n\r\n"))
 

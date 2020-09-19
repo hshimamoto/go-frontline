@@ -39,7 +39,7 @@ func NewSupplyLine(conn net.Conn) (*SupplyLine, error) {
 func (s *SupplyLine)handleConnect(conn net.Conn, cmd *msg.ConnectCommand) {
     c := &s.connections[cmd.ConnId]
     if c.Used {
-	// TODO: disconnect
+	// Ignore
 	return
     }
     c.Used = true
@@ -50,10 +50,11 @@ func (s *SupplyLine)handleConnect(conn net.Conn, cmd *msg.ConnectCommand) {
     lconn, err := session.Dial(hostport)
     if err != nil {
 	log.Printf("Connection %d: Dial: %v\n", cmd.ConnId, err)
-	conn.Write(msg.PackedDisconnectCommand(cmd.ConnId))
+	conn.Write(msg.PackedConnectAckCommand(cmd, false))
 	c.Used = false
 	return
     }
+    conn.Write(msg.PackedConnectAckCommand(cmd, true))
 
     go func () {
 	c.Run(lconn, s.q_req)

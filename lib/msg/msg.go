@@ -6,6 +6,7 @@ package msg
 const (
     linkCommand = iota
     connectCommand
+    connectAckCommand
     disconnectCommand
     dataCommand
 )
@@ -103,6 +104,42 @@ func (c *ConnectCommand)Name() string {
     return "ConnectCommand"
 }
 
+func PackedConnectAckCommand(cmd *ConnectCommand, ok bool) []byte {
+    buf := make([]byte, 3)
+    buf[0] = connectAckCommand
+    buf[1] = byte(cmd.ConnId)
+    if ok {
+	buf[2] = 1
+    } else {
+	buf[2] = 0
+    }
+    return buf
+}
+
+type ConnectAckCommand struct {
+    ConnId int
+    Ok bool
+}
+
+func ParseConnectAckCommand(buf []byte) (*ConnectAckCommand, int) {
+    if len(buf) < 3 {
+	return nil, 0
+    }
+    connId := int(buf[1])
+    ok := int(buf[2])
+    c := &ConnectAckCommand{}
+    c.ConnId = connId
+    c.Ok = true
+    if ok == 0 {
+	c.Ok = false
+    }
+    return c, 3
+}
+
+func (c *ConnectAckCommand)Name() string {
+    return "ConnectAckCommand"
+}
+
 func PackedDisconnectCommand(connId int) []byte {
     err := []byte{}
     if connId >= 256 {
@@ -198,6 +235,7 @@ func ParseCommand(buf []byte) (Command, int) {
     switch buf[0] {
     case linkCommand: return ParseLinkCommand(buf)
     case connectCommand: return ParseConnectCommand(buf)
+    case connectAckCommand: return ParseConnectAckCommand(buf)
     case disconnectCommand: return ParseDisconnectCommand(buf)
     case dataCommand: return ParseDataCommand(buf)
     }
