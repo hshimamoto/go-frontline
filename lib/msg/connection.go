@@ -97,3 +97,11 @@ func (c *Connection)FlushQ() {
     close(c.Q)
     c.Q = make(chan Command)
 }
+
+func (c *Connection)Free(done func()) {
+    go func() {
+	time.Sleep(time.Minute)
+	c.Used = false
+	done()
+    }()
+}

@@ -56,8 +56,11 @@ func (s *SupplyLine)handleConnect(conn net.Conn, cmd *msg.ConnectCommand) {
     }
 
     go func () {
-	defer lconn.Close()
 	c.Run(lconn, s.q_req)
+	lconn.Close()
+	c.Free(func(){
+	    log.Printf("connection %d freed\n", c.Id)
+	})
     }()
 }
 
@@ -68,7 +71,6 @@ func (s *SupplyLine)handleDisconnect(conn net.Conn, cmd *msg.DisconnectCommand) 
 	return
     }
     c.Q <- cmd
-    c.Used = false
 }
 
 func (s *SupplyLine)handleData(conn net.Conn, cmd *msg.DataCommand) {
@@ -77,7 +79,6 @@ func (s *SupplyLine)handleData(conn net.Conn, cmd *msg.DataCommand) {
 	// something wrong
 	return
     }
-    //log.Printf("Data: %d %v\n", cmd.Seq, cmd.Data)
     c.Q <- cmd
 }
 

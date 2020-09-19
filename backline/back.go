@@ -197,11 +197,14 @@ func (s *SupplyLine)Connect(conn net.Conn) {
     conn.Write([]byte("HTTP/1.0 200 Established\r\n\r\n"))
 
     go func() {
-	defer conn.Close()
 	c.Run(conn, s.q_req)
-	// back to free
-	c.Next = s.free
-	s.free = c
+	conn.Close()
+	c.Free(func(){
+	    // back to free
+	    c.Next = s.free
+	    s.free = c
+	    log.Printf("connection %d back to freelist\n", c.Id)
+	})
     }()
 }
 
