@@ -18,6 +18,7 @@ type Connection struct {
 }
 
 func localReader(id int, conn net.Conn, buf []byte, q_lread chan int, q_lwait chan bool) {
+    log.Printf("start localReader %d\n", id)
     for {
 	r, err := conn.Read(buf)
 	if err != nil {
@@ -35,6 +36,9 @@ func localReader(id int, conn net.Conn, buf []byte, q_lread chan int, q_lwait ch
     }
     q_lread <- 0
     <-q_lwait
+    close(q_lread)
+    close(q_lwait)
+    log.Printf("end localReader %d\n", id)
 }
 
 func (c *Connection)Run(conn net.Conn, q_req chan []byte) {
@@ -58,6 +62,16 @@ func (c *Connection)Run(conn net.Conn, q_req chan []byte) {
 	    case *DisconnectCommand:
 		// disconnect from remote
 		running = false
+		// need to wait localReader done
+		go func() {
+		    for {
+			r := <-q_lread
+			q_lwait <- true
+			if r == 0 {
+			    break
+			}
+		    }
+		}()
 	    }
 	case r:= <-q_lread:
 	    if r > 0 {
@@ -77,4 +91,9 @@ func (c *Connection)Run(conn net.Conn, q_req chan []byte) {
     }
 
     log.Printf("end connection %d\n", c.Id)
+}
+
+func (c *Connection)FlushQ() {
+    close(c.Q)
+    c.Q = make(chan Command)
 }

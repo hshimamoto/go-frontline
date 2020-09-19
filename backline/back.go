@@ -189,6 +189,7 @@ func (s *SupplyLine)Connect(conn net.Conn) {
     s.free = s.free.Next
     // mark it used
     c.Used = true
+    c.FlushQ()
 
     cmd := msg.PackedConnectCommand(c.Id, hostport)
     s.q_req <- cmd

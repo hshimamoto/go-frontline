@@ -43,6 +43,8 @@ func (s *SupplyLine)handleConnect(conn net.Conn, cmd *msg.ConnectCommand) {
 	return
     }
     c.Used = true
+    c.FlushQ()
+
     hostport := cmd.HostPort
     // try to connect
     lconn, err := session.Dial(hostport)
