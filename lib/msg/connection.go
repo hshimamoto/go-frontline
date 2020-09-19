@@ -8,7 +8,6 @@ import (
     "time"
 
     "frontline/lib/log"
-    "frontline/lib/misc"
 )
 
 type Connection struct {
@@ -16,6 +15,26 @@ type Connection struct {
     Used bool
     Next *Connection
     Q chan Command
+}
+
+func localReader(id int, conn net.Conn, buf []byte, q_lread chan int, q_lwait chan bool) {
+    for {
+	r, err := conn.Read(buf)
+	if err != nil {
+	    log.Printf("Connection %d: Read: %v\n", id, err)
+	    break
+	}
+	if r == 0 {
+	    log.Printf("Connection %d: closed\n", id)
+	    break
+	}
+	// send
+	q_lread <- r
+	// wait handled
+	<-q_lwait
+    }
+    q_lread <- 0
+    <-q_lwait
 }
 
 func (c *Connection)Run(conn net.Conn, q_req chan []byte) {
@@ -27,7 +46,7 @@ func (c *Connection)Run(conn net.Conn, q_req chan []byte) {
     q_lread := make(chan int)
     q_lwait := make(chan bool)
     // start LocalReader
-    go misc.LocalReader(id, conn, buf, q_lread, q_lwait)
+    go localReader(id, conn, buf, q_lread, q_lwait)
     running := true
     for running {
 	select {
