@@ -22,32 +22,34 @@ type Connection struct {
     Q chan msg.Command
 }
 
+func (c *Connection)LocalReader(conn net.Conn, buf []byte, q_lread chan int, q_lwait chan bool) {
+    for c.LocalLive {
+	r, err := conn.Read(buf)
+	if err != nil {
+	    log.Printf("Connection %d: Read: %v\n", c.Id, err)
+	    break
+	}
+	if r == 0 {
+	    log.Printf("Connection %d: closed\n", c.Id)
+	    break
+	}
+	// send
+	q_lread <- r
+	// wait handled
+	<-q_lwait
+    }
+    q_lread <- 0
+    <-q_lwait
+    c.LocalLive = false
+}
+
 func (c *Connection)Run(conn net.Conn, q_req chan []byte) {
     // TODO: this is adhoc implement
-    lbuf := make([]byte, 8192)
+    buf := make([]byte, 8192)
     q_lread := make(chan int)
     q_lwait := make(chan bool)
     // start reading
-    go func() {
-	for c.LocalLive {
-	    r, err := conn.Read(lbuf)
-	    if err != nil {
-		log.Printf("Connection %d: Read: %v\n", c.Id, err)
-		break
-	    }
-	    if r == 0 {
-		log.Printf("Connection %d: closed\n", c.Id)
-		break
-	    }
-	    // send
-	    q_lread <- r
-	    // wait handled
-	    <-q_lwait
-	}
-	q_lread <- 0
-	<-q_lwait
-	c.LocalLive = false
-    }()
+    go c.LocalReader(conn, buf, q_lread, q_lwait)
     // start main loop
     running := true
     for running {
@@ -67,7 +69,7 @@ func (c *Connection)Run(conn net.Conn, q_req chan []byte) {
 	    if r > 0 {
 		log.Printf("Connection %d: local read %d bytes\n", c.Id, r)
 		// send data
-		q_req <- msg.PackedDataCommand(c.Id, 0, lbuf[:r])
+		q_req <- msg.PackedDataCommand(c.Id, 0, buf[:r])
 	    } else {
 		// local closed
 		log.Println("local connection closed")
