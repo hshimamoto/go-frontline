@@ -21,3 +21,33 @@ func Println(v ...interface{}) {
 func Printf(format string, v ...interface{}) {
     log.Printf(format, v...)
 }
+
+type tag interface {
+    Printf(format string, v ...interface{})
+}
+
+type tagString struct {
+    s string
+}
+
+type tagFunc struct {
+    f func() string
+}
+
+func NewTag(t interface{}) tag {
+    switch t := t.(type) {
+    case string: return &tagString{ s:t }
+    case func() string: return &tagFunc{ f:t }
+    default: return nil
+    }
+}
+
+func (t *tagString)Printf(format string, v ...interface{}) {
+    msg := fmt.Sprintf(format, v...)
+    Printf("%s: %s", t.s, msg)
+}
+
+func (t *tagFunc)Printf(format string, v ...interface{}) {
+    msg := fmt.Sprintf(format, v...)
+    Printf("%s: %s", t.f(), msg)
+}
