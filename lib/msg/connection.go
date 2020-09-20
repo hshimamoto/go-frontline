@@ -15,6 +15,7 @@ type Connection struct {
     Used bool
     Next *Connection
     Q chan Command
+    SeqLocal, SeqRemote int
 }
 
 func localReader(id int, conn net.Conn, buf []byte, q_lread chan int, q_lwait chan bool) {
@@ -65,6 +66,11 @@ func (c *Connection)Run(conn net.Conn, q_req chan []byte) {
 	    switch cmd := cmd.(type) {
 	    case *DataCommand:
 		// write to local connection
+		seq := cmd.Seq
+		if seq != c.SeqRemote {
+		    log.Printf("invalid seq %d\n", seq)
+		}
+		c.SeqRemote++
 		conn.Write(cmd.Data)
 	    case *DisconnectCommand:
 		// disconnect from remote
@@ -84,7 +90,9 @@ func (c *Connection)Run(conn net.Conn, q_req chan []byte) {
 	    if r > 0 {
 		log.Printf("Connection %d: local read %d bytes\n", id, r)
 		// DataCommand
-		q_req <- PackedDataCommand(id, 0, buf[:r])
+		datacmd := PackedDataCommand(id, c.SeqLocal, buf[:r])
+		c.SeqLocal++
+		q_req <- datacmd
 	    } else {
 		log.Printf("Connection %d: local closed\n", id)
 		// DisconnectCommand
@@ -105,6 +113,8 @@ func (c *Connection)Init(id int) {
     c.Used = false
     c.Next = nil
     c.Q = make(chan Command)
+    c.SeqLocal = 0
+    c.SeqRemote = 0
 }
 
 func (c *Connection)FlushQ() {
