@@ -20,6 +20,7 @@ type Connection struct {
 func localReader(id int, conn net.Conn, buf []byte, q_lread chan int, q_lwait chan bool) {
     log.Printf("start localReader %d\n", id)
     for {
+	now := time.Now()
 	r, err := conn.Read(buf)
 	if err != nil {
 	    log.Printf("Connection %d: Read: %v\n", id, err)
@@ -33,6 +34,12 @@ func localReader(id int, conn net.Conn, buf []byte, q_lread chan int, q_lwait ch
 	q_lread <- r
 	// wait handled
 	<-q_lwait
+	// less than 100ms
+	if time.Now().Before(now.Add(time.Millisecond * 100)) {
+	    if r < 4096 {
+		time.Sleep(time.Millisecond * 100)
+	    }
+	}
     }
     q_lread <- 0
     <-q_lwait
