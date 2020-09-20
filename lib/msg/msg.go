@@ -10,6 +10,7 @@ const (
     connectAckCommand
     disconnectCommand
     dataCommand
+    dataAckCommand
 )
 
 type Command interface {
@@ -243,6 +244,41 @@ func (c *DataCommand)Name() string {
     return "DataCommand"
 }
 
+func PackedDataAckCommand(cmd *DataCommand) []byte {
+    buf := make([]byte, 5)
+    datalen := len(cmd.Data)
+    buf[0] = dataAckCommand
+    buf[1] = byte(cmd.ConnId)
+    buf[2] = byte(cmd.Seq)
+    buf[3] = byte((datalen >> 8) & 0xff)
+    buf[4] = byte(datalen & 0xff)
+    return buf
+}
+
+type DataAckCommand struct {
+    ConnId int
+    Seq int
+    DataLen int
+}
+
+func ParseDataAckCommand(buf []byte) (*DataAckCommand, int) {
+    if len(buf) < 5 {
+	return nil, 0
+    }
+    connId := int(buf[1])
+    seq := int(buf[2])
+    datalen := (int(buf[3]) << 8) | int(buf[4])
+    c := &DataAckCommand{}
+    c.ConnId = connId
+    c.Seq = seq
+    c.DataLen = datalen
+    return c, 5
+}
+
+func (c *DataAckCommand)Name() string {
+    return "DataAckCommand"
+}
+
 type UnknownCommand struct {
 }
 
@@ -258,6 +294,7 @@ func ParseCommand(buf []byte) (Command, int) {
     case connectAckCommand: return ParseConnectAckCommand(buf)
     case disconnectCommand: return ParseDisconnectCommand(buf)
     case dataCommand: return ParseDataCommand(buf)
+    case dataAckCommand: return ParseDataAckCommand(buf)
     }
     return &UnknownCommand{}, 0
 }

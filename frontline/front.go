@@ -81,6 +81,15 @@ func (s *SupplyLine)handleData(conn net.Conn, cmd *msg.DataCommand) {
     c.Q <- cmd
 }
 
+func (s *SupplyLine)handleDataAck(conn net.Conn, cmd *msg.DataAckCommand) {
+    c := &s.connections[cmd.ConnId]
+    if !c.Used {
+	// something wrong
+	return
+    }
+    c.Q <- cmd
+}
+
 func (s *SupplyLine)handleCommand(conn net.Conn, cmd msg.Command) {
     log.Printf("handle cmd: %s\n", cmd.Name())
     switch cmd := cmd.(type) {
@@ -95,6 +104,9 @@ func (s *SupplyLine)handleCommand(conn net.Conn, cmd msg.Command) {
     case *msg.DataCommand:
 	log.Printf("data [%d] %dbytes\n", cmd.ConnId, len(cmd.Data))
 	s.handleData(conn, cmd)
+    case *msg.DataAckCommand:
+	log.Printf("data ack [%d] %dbytes\n", cmd.ConnId, cmd.DataLen)
+	s.handleDataAck(conn, cmd)
     case *msg.UnknownCommand:
 	log.Println("unknown command")
     }

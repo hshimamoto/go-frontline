@@ -78,10 +78,14 @@ func (c *Connection)Run(conn net.Conn, q_req chan []byte) {
 		if seq != c.SeqRemote {
 		    log.Printf("invalid seq %d\n", seq)
 		}
+		dataackcmd := PackedDataAckCommand(cmd)
+		q_req <- dataackcmd
 		c.SeqRemote++
 		if len(cmd.Data) > 0 {
 		    conn.Write(cmd.Data)
 		}
+	    case *DataAckCommand:
+		// TODO: ACK
 	    case *DisconnectCommand:
 		// disconnect from remote
 		running = false
