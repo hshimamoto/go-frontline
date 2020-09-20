@@ -18,12 +18,18 @@ type Connection struct {
     SeqLocal, SeqRemote int
 }
 
-func localReader(id int, conn net.Conn, buf []byte, q_lread chan int, q_lwait chan bool) {
+func localReader(id int, conn net.Conn, buf []byte, q_lread chan int, q_lwait chan bool, running *bool) {
     log.Printf("start localReader %d\n", id)
-    for {
+    for *running {
 	now := time.Now()
+	conn.SetReadDeadline(now.Add(time.Second))
 	r, err := conn.Read(buf)
 	if err != nil {
+	    if operr, ok := err.(*net.OpError); ok {
+		if operr.Timeout() {
+		    continue
+		}
+	    }
 	    log.Printf("Connection %d: Read: %v\n", id, err)
 	    break
 	}
@@ -58,8 +64,8 @@ func (c *Connection)Run(conn net.Conn, q_req chan []byte) {
     q_lread := make(chan int)
     q_lwait := make(chan bool)
     // start LocalReader
-    go localReader(id, conn, buf, q_lread, q_lwait)
     running := true
+    go localReader(id, conn, buf, q_lread, q_lwait, &running)
     for running {
 	select {
 	case cmd := <-c.Q:
@@ -104,6 +110,8 @@ func (c *Connection)Run(conn net.Conn, q_req chan []byte) {
 	    // TODO: periodic process
 	}
     }
+
+    time.Sleep(time.Second * 3)
 
     log.Printf("end connection %d\n", c.Id)
 }
