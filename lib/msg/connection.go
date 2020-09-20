@@ -10,6 +10,8 @@ import (
     "frontline/lib/log"
 )
 
+const LocalBufferSize = 16384
+
 type Connection struct {
     Id int
     Used bool
@@ -43,7 +45,7 @@ func localReader(id int, conn net.Conn, buf []byte, q_lread chan int, q_lwait ch
 	<-q_lwait
 	// less than 100ms
 	if time.Now().Before(now.Add(time.Millisecond * 100)) {
-	    if r < 4096 {
+	    if r < (LocalBufferSize / 2) {
 		time.Sleep(time.Millisecond * 100)
 	    }
 	}
@@ -60,7 +62,7 @@ func (c *Connection)Run(conn net.Conn, q_req chan []byte) {
 
     id := c.Id
 
-    buf := make([]byte, 8192)
+    buf := make([]byte, LocalBufferSize)
     q_lread := make(chan int)
     q_lwait := make(chan bool)
     // start LocalReader
