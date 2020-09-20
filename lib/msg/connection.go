@@ -96,7 +96,6 @@ func (c *Connection)Run(conn net.Conn, q_req chan []byte) {
 	    }
 	case r:= <-q_lread:
 	    if r > 0 {
-		log.Printf("Connection %d: local read %d bytes\n", id, r)
 		// DataCommand
 		datacmd := PackedDataCommand(id, c.SeqLocal, buf[:r])
 		c.SeqLocal++

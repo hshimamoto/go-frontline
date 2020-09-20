@@ -35,11 +35,9 @@ func Receiver(conn net.Conn, q_recv chan Command, q_wait chan bool) error {
 		// parse error
 		return fmt.Errorf("command parse error: %v\n", buf[s:n])
 	    }
-	    log.Printf("Q <- %s\n", cmd.Name())
 	    q_recv <- cmd
 	    // wait to finish command done
 	    <-q_wait
-	    log.Println("command done")
 	    s += clen
 	}
 	if s < n {
