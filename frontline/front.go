@@ -31,7 +31,7 @@ func NewSupplyLine(conn net.Conn) (*SupplyLine, error) {
 	conn := &s.connections[i]
 	conn.Init(i)
     }
-    s.q_req = make(chan []byte)
+    s.q_req = make(chan []byte, 256)
     return s, nil
 }
 
@@ -107,8 +107,8 @@ func (s *SupplyLine)HandleDataAck(cmd *msg.DataAckCommand) {
 
 func (s *SupplyLine)Run() {
     conn := s.back
-    q_recv := make(chan msg.Command)
-    q_wait := make(chan bool, 1)
+    q_recv := make(chan msg.Command, 256)
+    q_wait := make(chan bool, 256)
     // start receiver
     go func() {
 	err := msg.Receiver(conn, q_recv, q_wait)

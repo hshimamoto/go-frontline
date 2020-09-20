@@ -63,8 +63,8 @@ func (c *Connection)Run(conn net.Conn, q_req chan []byte) {
     id := c.Id
 
     buf := make([]byte, LocalBufferSize)
-    q_lread := make(chan int)
-    q_lwait := make(chan bool)
+    q_lread := make(chan int, 32)
+    q_lwait := make(chan bool, 32)
     // start LocalReader
     running := true
     go localReader(id, conn, buf, q_lread, q_lwait, &running)
