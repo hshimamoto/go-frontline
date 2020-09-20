@@ -12,6 +12,11 @@ import (
 
 func Receiver(conn net.Conn, q_recv chan<- Command, q_wait <-chan bool) error {
     defer close(q_recv)
+    tag := log.NewTag("Receiver")
+    if tcp, ok := conn.(*net.TCPConn); ok {
+	tag = log.NewTag(fmt.Sprintf("Receiver[%v]", tcp.RemoteAddr()))
+    }
+
     buf := make([]byte, 65536)
     n := 0
     for {
@@ -25,14 +30,14 @@ func Receiver(conn net.Conn, q_recv chan<- Command, q_wait <-chan bool) error {
 	n += r
 	s := 0
 	for s < n {
-	    log.Printf("try to parse buf[%d:%d]\n", s, n)
+	    tag.Printf("try to parse buf[%d:%d]\n", s, n)
 	    cmd, clen := ParseCommand(buf[s:n])
 	    if cmd == nil {
-		log.Println("not enough buffer")
+		tag.Printf("not enough buffer (cmd == nil)\n")
 		break
 	    }
 	    if clen == 0 {
-		log.Println("not enough buffer")
+		tag.Printf("not enough buffer (clen == 0)\n")
 		break
 	    }
 	    if clen == -1 {

@@ -4,6 +4,7 @@
 package msg
 
 import (
+    "fmt"
     "net"
     "time"
 
@@ -21,7 +22,8 @@ type Connection struct {
 }
 
 func localReader(id int, conn net.Conn, buf []byte, q_lread chan<- int, q_lwait <-chan bool, running *bool) {
-    log.Printf("start localReader %d\n", id)
+    tag := log.NewTag(fmt.Sprintf("C[%d] localReader", id))
+    tag.Printf("start")
     for *running {
 	now := time.Now()
 	conn.SetReadDeadline(now.Add(time.Second))
@@ -32,11 +34,11 @@ func localReader(id int, conn net.Conn, buf []byte, q_lread chan<- int, q_lwait 
 		    continue
 		}
 	    }
-	    log.Printf("Connection %d: Read: %v\n", id, err)
+	    tag.Printf("Read: %v\n", err)
 	    break
 	}
 	if r == 0 {
-	    log.Printf("Connection %d: closed\n", id)
+	    tag.Printf("closed\n")
 	    break
 	}
 	// send
@@ -53,13 +55,13 @@ func localReader(id int, conn net.Conn, buf []byte, q_lread chan<- int, q_lwait 
     q_lread <- 0
     <-q_lwait
     close(q_lread)
-    log.Printf("end localReader %d\n", id)
+    tag.Printf("end\n")
 }
 
 func (c *Connection)Run(conn net.Conn, q_req chan<- []byte) {
-    log.Printf("start connection %d\n", c.Id)
-
     id := c.Id
+    tag := log.NewTag(fmt.Sprintf("C[%d]", id))
+    tag.Printf("start")
 
     buf := make([]byte, LocalBufferSize)
     q_lread := make(chan int, 32)
@@ -75,7 +77,7 @@ func (c *Connection)Run(conn net.Conn, q_req chan<- []byte) {
 		// write to local connection
 		seq := cmd.Seq
 		if seq != c.SeqRemote {
-		    log.Printf("invalid seq %d\n", seq)
+		    tag.Printf("invalid seq %d\n", seq)
 		}
 		dataackcmd := PackedDataAckCommand(cmd)
 		q_req <- dataackcmd
@@ -106,7 +108,7 @@ func (c *Connection)Run(conn net.Conn, q_req chan<- []byte) {
 		c.SeqLocal++
 		q_req <- datacmd
 	    } else {
-		log.Printf("Connection %d: local closed\n", id)
+		tag.Printf("local closed\n")
 		// DisconnectCommand
 		q_req <- PackedDisconnectCommand(id)
 		running = false
@@ -124,7 +126,7 @@ func (c *Connection)Run(conn net.Conn, q_req chan<- []byte) {
     time.Sleep(time.Second * 3)
     close(q_lwait)
 
-    log.Printf("end connection %d\n", c.Id)
+    tag.Printf("end")
 }
 
 func (c *Connection)Init(id int) {
