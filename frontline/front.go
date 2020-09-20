@@ -19,6 +19,7 @@ type SupplyLine struct {
     back net.Conn
     connections []msg.Connection
     q_req chan []byte
+    keepalive int
 }
 
 func NewSupplyLine(conn net.Conn) (*SupplyLine, error) {
@@ -35,6 +36,10 @@ func NewSupplyLine(conn net.Conn) (*SupplyLine, error) {
 }
 
 func (s *SupplyLine)HandleLink(cmd *msg.LinkCommand) {
+}
+
+func (s *SupplyLine)HandleKeepalive(cmd *msg.KeepaliveCommand) {
+    s.keepalive = 0
 }
 
 func (s *SupplyLine)HandleConnect(cmd *msg.ConnectCommand) {
@@ -138,6 +143,12 @@ func (s *SupplyLine)Run() {
 	case <-ticker.C:
 	    // keep alive
 	    conn.Write(msg.PackedKeepaliveCommand())
+	    s.keepalive++
+	    if s.keepalive >= 3 {
+		log.Printf("keep alive failed\n")
+		running = false
+		break
+	    }
 	}
     }
 }

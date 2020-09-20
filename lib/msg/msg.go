@@ -301,7 +301,7 @@ func ParseCommand(buf []byte) (Command, int) {
 
 type CommandHandler interface {
     HandleLink(cmd *LinkCommand)
-    //HandleKeepalive(cmd *KeepaliveCommand)
+    HandleKeepalive(cmd *KeepaliveCommand)
     HandleConnect(cmd *ConnectCommand)
     HandleConnectAck(cmd *ConnectAckCommand)
     HandleDisconnect(cmd *DisconnectCommand)
@@ -312,7 +312,7 @@ type CommandHandler interface {
 func HandleCommand(h CommandHandler, cmd Command) {
     switch cmd := cmd.(type) {
     case *LinkCommand: h.HandleLink(cmd)
-    //case *KeepaliveCommand: h.HandleKeepalive(cmd)
+    case *KeepaliveCommand: h.HandleKeepalive(cmd)
     case *ConnectCommand: h.HandleConnect(cmd)
     case *ConnectAckCommand: h.HandleConnectAck(cmd)
     case *DisconnectCommand: h.HandleDisconnect(cmd)
