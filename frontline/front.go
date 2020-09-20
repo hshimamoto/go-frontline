@@ -34,7 +34,10 @@ func NewSupplyLine(conn net.Conn) (*SupplyLine, error) {
     return s, nil
 }
 
-func (s *SupplyLine)handleConnect(conn net.Conn, cmd *msg.ConnectCommand) {
+func (s *SupplyLine)HandleLink(cmd *msg.LinkCommand) {
+}
+
+func (s *SupplyLine)HandleConnect(cmd *msg.ConnectCommand) {
     c := &s.connections[cmd.ConnId]
     if c.Used {
 	// Ignore
@@ -48,11 +51,15 @@ func (s *SupplyLine)handleConnect(conn net.Conn, cmd *msg.ConnectCommand) {
     lconn, err := session.Dial(hostport)
     if err != nil {
 	log.Printf("Connection %d: Dial: %v\n", cmd.ConnId, err)
-	conn.Write(msg.PackedConnectAckCommand(cmd, false))
+	go func() {
+	    s.q_req <- msg.PackedConnectAckCommand(cmd, false)
+	}()
 	c.Used = false
 	return
     }
-    conn.Write(msg.PackedConnectAckCommand(cmd, true))
+    go func() {
+	s.q_req <- msg.PackedConnectAckCommand(cmd, true)
+    }()
 
     go func () {
 	c.Run(lconn, s.q_req)
@@ -63,7 +70,10 @@ func (s *SupplyLine)handleConnect(conn net.Conn, cmd *msg.ConnectCommand) {
     }()
 }
 
-func (s *SupplyLine)handleDisconnect(conn net.Conn, cmd *msg.DisconnectCommand) {
+func (s *SupplyLine)HandleConnectAck(cmd *msg.ConnectAckCommand) {
+}
+
+func (s *SupplyLine)HandleDisconnect(cmd *msg.DisconnectCommand) {
     c := &s.connections[cmd.ConnId]
     if !c.Used {
 	// something wrong
@@ -72,7 +82,7 @@ func (s *SupplyLine)handleDisconnect(conn net.Conn, cmd *msg.DisconnectCommand) 
     c.Q <- cmd
 }
 
-func (s *SupplyLine)handleData(conn net.Conn, cmd *msg.DataCommand) {
+func (s *SupplyLine)HandleData(cmd *msg.DataCommand) {
     c := &s.connections[cmd.ConnId]
     if !c.Used {
 	// something wrong
@@ -81,36 +91,13 @@ func (s *SupplyLine)handleData(conn net.Conn, cmd *msg.DataCommand) {
     c.Q <- cmd
 }
 
-func (s *SupplyLine)handleDataAck(conn net.Conn, cmd *msg.DataAckCommand) {
+func (s *SupplyLine)HandleDataAck(cmd *msg.DataAckCommand) {
     c := &s.connections[cmd.ConnId]
     if !c.Used {
 	// something wrong
 	return
     }
     c.Q <- cmd
-}
-
-func (s *SupplyLine)handleCommand(conn net.Conn, cmd msg.Command) {
-    log.Printf("handle cmd: %s\n", cmd.Name())
-    switch cmd := cmd.(type) {
-    case *msg.LinkCommand:
-	log.Printf("link from %s\n", cmd.Client)
-    case *msg.ConnectCommand:
-	log.Printf("connect to %s [%d]\n", cmd.HostPort, cmd.ConnId)
-	s.handleConnect(conn, cmd)
-    case *msg.DisconnectCommand:
-	log.Printf("disconnect [%d]\n", cmd.ConnId)
-	s.handleDisconnect(conn, cmd)
-    case *msg.DataCommand:
-	log.Printf("data [%d] %dbytes\n", cmd.ConnId, len(cmd.Data))
-	s.handleData(conn, cmd)
-    case *msg.DataAckCommand:
-	log.Printf("data ack [%d] %dbytes\n", cmd.ConnId, cmd.DataLen)
-	s.handleDataAck(conn, cmd)
-    case *msg.UnknownCommand:
-	log.Println("unknown command")
-    }
-    log.Println("handle command done")
 }
 
 func (s *SupplyLine)Run() {
@@ -134,7 +121,8 @@ func (s *SupplyLine)Run() {
 		running = false
 		break
 	    }
-	    s.handleCommand(conn, cmd)
+	    log.Printf("recv %s\n", cmd.Name())
+	    msg.HandleCommand(s, cmd)
 	    q_wait <- true
 	case cmd := <-s.q_req:
 	    conn.Write(cmd)

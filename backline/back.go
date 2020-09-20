@@ -83,7 +83,13 @@ func NewSupplyLine(front string) *SupplyLine {
     return s
 }
 
-func (s *SupplyLine)handleConnectAck(conn net.Conn, cmd *msg.ConnectAckCommand) {
+func (s *SupplyLine)HandleLink(cmd *msg.LinkCommand) {
+}
+
+func (s *SupplyLine)HandleConnect(cmd *msg.ConnectCommand) {
+}
+
+func (s *SupplyLine)HandleConnectAck(cmd *msg.ConnectAckCommand) {
     c := &s.connections[cmd.ConnId]
     if !c.Used {
 	log.Printf("Ack for unused connection %d\n", cmd.ConnId)
@@ -92,7 +98,7 @@ func (s *SupplyLine)handleConnectAck(conn net.Conn, cmd *msg.ConnectAckCommand) 
     c.Q <- cmd
 }
 
-func (s *SupplyLine)handleDisconnect(conn net.Conn, cmd *msg.DisconnectCommand) {
+func (s *SupplyLine)HandleDisconnect(cmd *msg.DisconnectCommand) {
     c := &s.connections[cmd.ConnId]
     if !c.Used {
 	log.Printf("Data for unused connection %d\n", cmd.ConnId)
@@ -101,7 +107,7 @@ func (s *SupplyLine)handleDisconnect(conn net.Conn, cmd *msg.DisconnectCommand) 
     c.Q <- cmd
 }
 
-func (s *SupplyLine)handleData(conn net.Conn, cmd *msg.DataCommand) {
+func (s *SupplyLine)HandleData(cmd *msg.DataCommand) {
     c := &s.connections[cmd.ConnId]
     if !c.Used {
 	log.Printf("Data for unused connection %d\n", cmd.ConnId)
@@ -110,38 +116,13 @@ func (s *SupplyLine)handleData(conn net.Conn, cmd *msg.DataCommand) {
     c.Q <- cmd
 }
 
-func (s *SupplyLine)handleDataAck(conn net.Conn, cmd *msg.DataAckCommand) {
+func (s *SupplyLine)HandleDataAck(cmd *msg.DataAckCommand) {
     c := &s.connections[cmd.ConnId]
     if !c.Used {
 	log.Printf("DataAck for unused connection %d\n", cmd.ConnId)
 	return
     }
     c.Q <- cmd
-}
-
-func (s *SupplyLine)handleCommand(conn net.Conn, cmd msg.Command) {
-    log.Printf("handle cmd: %s\n", cmd.Name())
-    switch cmd := cmd.(type) {
-    case *msg.LinkCommand:
-	log.Printf("link from %s\n", cmd.Client)
-    case *msg.ConnectCommand:
-	log.Printf("connect to %s [%d]\n", cmd.HostPort, cmd.ConnId)
-    case *msg.ConnectAckCommand:
-	log.Printf("connectack [%d] %v\n", cmd.ConnId, cmd.Ok)
-	s.handleConnectAck(conn, cmd)
-    case *msg.DisconnectCommand:
-	log.Printf("disconnect [%d]\n", cmd.ConnId)
-	s.handleDisconnect(conn, cmd)
-    case *msg.DataCommand:
-	log.Printf("data [%d] %dbytes\n", cmd.ConnId, len(cmd.Data))
-	s.handleData(conn, cmd)
-    case *msg.DataAckCommand:
-	log.Printf("data ack [%d] %dbytes\n", cmd.ConnId, cmd.DataLen)
-	s.handleDataAck(conn, cmd)
-    case *msg.UnknownCommand:
-	log.Println("unknown command")
-    }
-    log.Println("handle command done")
 }
 
 func (s *SupplyLine)main(conn net.Conn) {
@@ -179,7 +160,7 @@ func (s *SupplyLine)main(conn net.Conn) {
 		break
 	    }
 	    log.Printf("recv %s\n", cmd.Name())
-	    s.handleCommand(conn, cmd)
+	    msg.HandleCommand(s, cmd)
 	    q_wait <- true
 	case <-ticker.C:
 	    // keep alive
