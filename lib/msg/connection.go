@@ -20,7 +20,7 @@ type Connection struct {
     SeqLocal, SeqRemote int
 }
 
-func localReader(id int, conn net.Conn, buf []byte, q_lread chan int, q_lwait chan bool, running *bool) {
+func localReader(id int, conn net.Conn, buf []byte, q_lread chan<- int, q_lwait <-chan bool, running *bool) {
     log.Printf("start localReader %d\n", id)
     for *running {
 	now := time.Now()
@@ -53,11 +53,10 @@ func localReader(id int, conn net.Conn, buf []byte, q_lread chan int, q_lwait ch
     q_lread <- 0
     <-q_lwait
     close(q_lread)
-    close(q_lwait)
     log.Printf("end localReader %d\n", id)
 }
 
-func (c *Connection)Run(conn net.Conn, q_req chan []byte) {
+func (c *Connection)Run(conn net.Conn, q_req chan<- []byte) {
     log.Printf("start connection %d\n", c.Id)
 
     id := c.Id
@@ -123,6 +122,7 @@ func (c *Connection)Run(conn net.Conn, q_req chan []byte) {
     }
 
     time.Sleep(time.Second * 3)
+    close(q_lwait)
 
     log.Printf("end connection %d\n", c.Id)
 }

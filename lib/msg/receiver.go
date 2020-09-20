@@ -10,7 +10,7 @@ import (
     "frontline/lib/log"
 )
 
-func Receiver(conn net.Conn, q_recv chan Command, q_wait chan bool) error {
+func Receiver(conn net.Conn, q_recv chan<- Command, q_wait <-chan bool) error {
     defer close(q_recv)
     buf := make([]byte, 65536)
     n := 0
