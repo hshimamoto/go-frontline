@@ -77,7 +77,9 @@ func (c *Connection)Run(conn net.Conn, q_req chan []byte) {
 		    log.Printf("invalid seq %d\n", seq)
 		}
 		c.SeqRemote++
-		conn.Write(cmd.Data)
+		if len(cmd.Data) > 0 {
+		    conn.Write(cmd.Data)
+		}
 	    case *DisconnectCommand:
 		// disconnect from remote
 		running = false
@@ -108,6 +110,10 @@ func (c *Connection)Run(conn net.Conn, q_req chan []byte) {
 	    q_lwait <- true
 	case <-time.After(time.Minute):
 	    // TODO: periodic process
+	    // Send Empty Data
+	    datacmd := PackedDataCommand(id, c.SeqLocal, []byte{})
+	    c.SeqLocal++
+	    q_req <- datacmd
 	}
     }
 
