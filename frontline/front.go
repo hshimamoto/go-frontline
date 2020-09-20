@@ -125,7 +125,16 @@ func (s *SupplyLine)Run() {
 	    msg.HandleCommand(s, cmd)
 	    q_wait <- true
 	case cmd := <-s.q_req:
-	    conn.Write(cmd)
+	    n := 0
+	    for n < len(cmd) {
+		w, err := conn.Write(cmd[n:])
+		if err != nil {
+		    log.Printf("write cmd: %v\n", err)
+		    running = false
+		    break
+		}
+		n += w
+	    }
 	case <-ticker.C:
 	    // keep alive
 	    conn.Write(msg.PackedKeepaliveCommand())

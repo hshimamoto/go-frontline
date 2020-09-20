@@ -151,8 +151,6 @@ func (s *SupplyLine)main(conn net.Conn) {
     running := true
     for running {
 	select {
-	case cmd := <-s.q_req:
-	    conn.Write(cmd)
 	case cmd, ok := <-q_recv:
 	    if !ok {
 		log.Println("q_recv closed")
@@ -162,6 +160,17 @@ func (s *SupplyLine)main(conn net.Conn) {
 	    log.Printf("recv %s\n", cmd.Name())
 	    msg.HandleCommand(s, cmd)
 	    q_wait <- true
+	case cmd := <-s.q_req:
+	    n := 0
+	    for n < len(cmd) {
+		w, err := conn.Write(cmd[n:])
+		if err != nil {
+		    log.Printf("write cmd: %v\n", err)
+		    running = false
+		    break
+		}
+		n += w
+	    }
 	case <-ticker.C:
 	    // keep alive
 	    conn.Write(msg.PackedKeepaliveCommand())
