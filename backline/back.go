@@ -132,14 +132,20 @@ func (s *SupplyLine)HandleDataAck(cmd *msg.DataAckCommand) {
 
 func (s *SupplyLine)main(conn net.Conn) {
     defer conn.Close()
+
+    tag := log.NewTag("Unknown")
+    if tcp, ok := conn.(*net.TCPConn); ok {
+	tag = log.NewTag(fmt.Sprintf("%v", tcp.RemoteAddr()))
+    }
+
     hostname, err := os.Hostname()
     if err != nil {
-	log.Printf("unable to get hostname: %v\n", err)
+	tag.Printf("unable to get hostname: %v\n", err)
 	hostname = "Unknown"
     }
     cmd := msg.PackedLinkCommand(fmt.Sprintf("%s-%d", hostname, os.Getpid()))
     if _, err := conn.Write(cmd); err != nil {
-	log.Printf("send command error: %v\n", err)
+	tag.Printf("send command error: %v\n", err)
 	return
     }
     // now link is established, start receiver
@@ -148,7 +154,7 @@ func (s *SupplyLine)main(conn net.Conn) {
     // start receiver
     go func() {
 	err := msg.Receiver(conn, q_recv, q_wait)
-	log.Printf("Receiver: %v\n", err)
+	tag.Printf("Receiver: %v\n", err)
 	close(q_wait)
     }()
     ticker := time.NewTicker(time.Minute)
@@ -158,11 +164,11 @@ func (s *SupplyLine)main(conn net.Conn) {
 	select {
 	case cmd, ok := <-q_recv:
 	    if !ok {
-		log.Println("q_recv closed")
+		tag.Printf("q_recv closed\n")
 		running = false
 		break
 	    }
-	    log.Printf("recv %s\n", cmd.Name())
+	    tag.Printf("recv %s\n", cmd.Name())
 	    msg.HandleCommand(s, cmd)
 	    q_wait <- true
 	case cmd := <-s.q_req:
@@ -170,7 +176,7 @@ func (s *SupplyLine)main(conn net.Conn) {
 	    for n < len(cmd) {
 		w, err := conn.Write(cmd[n:])
 		if err != nil {
-		    log.Printf("write cmd: %v\n", err)
+		    tag.Printf("write cmd: %v\n", err)
 		    running = false
 		    break
 		}
@@ -181,7 +187,7 @@ func (s *SupplyLine)main(conn net.Conn) {
 	    conn.Write(msg.PackedKeepaliveCommand())
 	    s.keepalive++
 	    if s.keepalive >= 3 {
-		log.Printf("keep alive failed\n")
+		tag.Printf("keep alive failed\n")
 		running = false
 		break
 	    }

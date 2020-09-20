@@ -4,6 +4,7 @@
 package main
 
 import (
+    "fmt"
     "net"
     "os"
     "time"
@@ -103,12 +104,18 @@ func (s *SupplyLine)HandleDataAck(cmd *msg.DataAckCommand) {
 
 func (s *SupplyLine)Run() {
     conn := s.back
+
+    tag := log.NewTag("Unknown")
+    if tcp, ok := conn.(*net.TCPConn); ok {
+	tag = log.NewTag(fmt.Sprintf("%v", tcp.RemoteAddr()))
+    }
+
     q_recv := make(chan msg.Command, 256)
     q_wait := make(chan bool, 256)
     // start receiver
     go func() {
 	err := msg.Receiver(conn, q_recv, q_wait)
-	log.Printf("Receiver: %v\n", err)
+	tag.Printf("Receiver: %v\n", err)
 	close(q_wait)
     }()
     ticker := time.NewTicker(time.Minute)
@@ -118,11 +125,11 @@ func (s *SupplyLine)Run() {
 	select {
 	case cmd, ok := <-q_recv:
 	    if !ok {
-		log.Println("q_recv closed")
+		tag.Printf("q_recv closed\n")
 		running = false
 		break
 	    }
-	    log.Printf("recv %s\n", cmd.Name())
+	    tag.Printf("recv %s\n", cmd.Name())
 	    msg.HandleCommand(s, cmd)
 	    q_wait <- true
 	case cmd := <-s.q_req:
@@ -130,7 +137,7 @@ func (s *SupplyLine)Run() {
 	    for n < len(cmd) {
 		w, err := conn.Write(cmd[n:])
 		if err != nil {
-		    log.Printf("write cmd: %v\n", err)
+		    tag.Printf("write cmd: %v\n", err)
 		    running = false
 		    break
 		}
@@ -141,7 +148,7 @@ func (s *SupplyLine)Run() {
 	    conn.Write(msg.PackedKeepaliveCommand())
 	    s.keepalive++
 	    if s.keepalive >= 3 {
-		log.Printf("keep alive failed\n")
+		tag.Printf("keep alive failed\n")
 		running = false
 		break
 	    }
