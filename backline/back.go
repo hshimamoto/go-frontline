@@ -134,6 +134,7 @@ func (s *SupplyLine)handleCommand(conn net.Conn, cmd msg.Command) {
 }
 
 func (s *SupplyLine)main(conn net.Conn) {
+    defer conn.Close()
     hostname, err := os.Hostname()
     if err != nil {
 	log.Printf("unable to get hostname: %v\n", err)
@@ -153,6 +154,8 @@ func (s *SupplyLine)main(conn net.Conn) {
 	log.Printf("Receiver: %v\n", err)
 	close(q_wait)
     }()
+    ticker := time.NewTicker(time.Minute)
+    defer ticker.Stop()
     running := true
     for running {
 	select {
@@ -167,7 +170,9 @@ func (s *SupplyLine)main(conn net.Conn) {
 	    log.Printf("recv %s\n", cmd.Name())
 	    s.handleCommand(conn, cmd)
 	    q_wait <- true
-	case <-time.After(time.Minute):
+	case <-ticker.C:
+	    // keep alive
+	    conn.Write(msg.PackedKeepaliveCommand())
 	}
     }
 }

@@ -5,6 +5,7 @@ package msg
 
 const (
     linkCommand = iota
+    keepaliveCommand
     connectCommand
     connectAckCommand
     disconnectCommand
@@ -54,6 +55,24 @@ func ParseLinkCommand(buf []byte) (*LinkCommand, int) {
 
 func (c *LinkCommand)Name() string {
     return "LinkCommand"
+}
+
+func PackedKeepaliveCommand() []byte {
+    buf := make([]byte, 1)
+    buf[0] = keepaliveCommand
+    return buf
+}
+
+type KeepaliveCommand struct {
+}
+
+func ParseKeepaliveCommand(buf []byte) (*KeepaliveCommand, int) {
+    c := &KeepaliveCommand{}
+    return c, 1
+}
+
+func (c *KeepaliveCommand)Name() string {
+    return "KeepaliveCommand"
 }
 
 func PackedConnectCommand(connId int, hostport string) []byte {
@@ -234,6 +253,7 @@ func (c *UnknownCommand)Name() string {
 func ParseCommand(buf []byte) (Command, int) {
     switch buf[0] {
     case linkCommand: return ParseLinkCommand(buf)
+    case keepaliveCommand: return ParseKeepaliveCommand(buf)
     case connectCommand: return ParseConnectCommand(buf)
     case connectAckCommand: return ParseConnectAckCommand(buf)
     case disconnectCommand: return ParseDisconnectCommand(buf)

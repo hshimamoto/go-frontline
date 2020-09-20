@@ -113,6 +113,8 @@ func (s *SupplyLine)Run() {
 	log.Printf("Receiver: %v\n", err)
 	close(q_wait)
     }()
+    ticker := time.NewTicker(time.Minute)
+    defer ticker.Stop()
     running := true
     for running {
 	log.Println("waiting cmd")
@@ -127,8 +129,9 @@ func (s *SupplyLine)Run() {
 	    q_wait <- true
 	case cmd := <-s.q_req:
 	    conn.Write(cmd)
-	case <-time.After(time.Minute):
-	    log.Println("timeout")
+	case <-ticker.C:
+	    // keep alive
+	    conn.Write(msg.PackedKeepaliveCommand())
 	}
     }
 }
