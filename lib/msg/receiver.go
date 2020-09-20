@@ -32,6 +32,10 @@ func Receiver(conn net.Conn, q_recv chan Command, q_wait chan bool) error {
 		break
 	    }
 	    if clen == 0 {
+		log.Println("not enough buffer")
+		break
+	    }
+	    if clen == -1 {
 		// parse error
 		return fmt.Errorf("command parse error: %v\n", buf[s:n])
 	    }

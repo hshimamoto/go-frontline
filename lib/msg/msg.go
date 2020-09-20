@@ -220,7 +220,7 @@ type DataCommand struct {
 }
 
 func ParseDataCommand(buf []byte) (*DataCommand, int) {
-    if len(buf) < 4 {
+    if len(buf) < 5 {
 	return nil, 0
     }
     connId := int(buf[1])
@@ -296,7 +296,7 @@ func ParseCommand(buf []byte) (Command, int) {
     case dataCommand: return ParseDataCommand(buf)
     case dataAckCommand: return ParseDataAckCommand(buf)
     }
-    return &UnknownCommand{}, 0
+    return &UnknownCommand{}, -1
 }
 
 type CommandHandler interface {
