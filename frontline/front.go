@@ -117,7 +117,6 @@ func (s *SupplyLine)Run() {
     defer ticker.Stop()
     running := true
     for running {
-	log.Println("waiting cmd")
 	select {
 	case cmd, ok := <-q_recv:
 	    if !ok {
