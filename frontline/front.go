@@ -56,15 +56,11 @@ func (s *SupplyLine)HandleConnect(cmd *msg.ConnectCommand) {
     lconn, err := session.Dial(hostport)
     if err != nil {
 	log.Printf("Connection %d: Dial: %v\n", cmd.ConnId, err)
-	go func() {
-	    s.q_req <- msg.PackedConnectAckCommand(cmd, false)
-	}()
+	s.q_req <- msg.PackedConnectAckCommand(cmd, false)
 	c.Used = false
 	return
     }
-    go func() {
-	s.q_req <- msg.PackedConnectAckCommand(cmd, true)
-    }()
+    s.q_req <- msg.PackedConnectAckCommand(cmd, true)
 
     go func () {
 	c.Run(lconn, s.q_req)
