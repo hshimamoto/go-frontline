@@ -93,6 +93,13 @@ func (c *Connection)Run(conn net.Conn, q_req chan []byte) {
     log.Printf("end connection %d\n", c.Id)
 }
 
+func (c *Connection)Init(id int) {
+    c.Id = id
+    c.Used = false
+    c.Next = nil
+    c.Q = make(chan Command)
+}
+
 func (c *Connection)FlushQ() {
     close(c.Q)
     c.Q = make(chan Command)

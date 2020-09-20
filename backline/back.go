@@ -73,10 +73,9 @@ func NewSupplyLine(front string) *SupplyLine {
     var prev *msg.Connection = nil
     for i := 0; i < 256; i++ {
 	conn := &s.connections[i]
-	conn.Id = i
-	conn.Used = false
+	conn.Init(i)
+	// for free list
 	conn.Next = prev
-	conn.Q = make(chan msg.Command)
 	prev = conn
     }
     s.free = prev

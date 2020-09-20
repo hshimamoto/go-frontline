@@ -28,9 +28,7 @@ func NewSupplyLine(conn net.Conn) (*SupplyLine, error) {
     s.connections = make([]msg.Connection, 256)
     for i := 0; i < 256; i++ {
 	conn := &s.connections[i]
-	conn.Id = i
-	conn.Used = false
-	conn.Q = make(chan msg.Command)
+	conn.Init(i)
     }
     s.q_req = make(chan []byte)
     return s, nil
