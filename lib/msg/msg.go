@@ -226,6 +226,9 @@ func ParseDataCommand(buf []byte) (*DataCommand, int) {
     connId := int(buf[1])
     seq := int(buf[2])
     datalen := (int(buf[3]) << 8) | int(buf[4])
+    if datalen >= 32768 {
+	return nil, -1
+    }
     if len(buf) < 5 + datalen {
 	return nil, 0
     }
