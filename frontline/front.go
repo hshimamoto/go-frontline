@@ -110,17 +110,18 @@ func (s *SupplyLine)Run() {
 	tag = log.NewTag(fmt.Sprintf("%v", tcp.RemoteAddr()))
     }
 
+    ticker := time.NewTicker(time.Minute)
+    defer ticker.Stop()
+
+    running := true
     q_recv := make(chan msg.Command, 256)
     q_wait := make(chan bool, 256)
     // start receiver
     go func() {
-	err := msg.Receiver(conn, q_recv, q_wait)
+	err := msg.Receiver(conn, q_recv, q_wait, &running)
 	tag.Printf("Receiver: %v\n", err)
 	close(q_wait)
     }()
-    ticker := time.NewTicker(time.Minute)
-    defer ticker.Stop()
-    running := true
     for running {
 	select {
 	case cmd, ok := <-q_recv:
@@ -154,6 +155,8 @@ func (s *SupplyLine)Run() {
 	    }
 	}
     }
+
+    time.Sleep(time.Second * 3)
 }
 
 func main() {

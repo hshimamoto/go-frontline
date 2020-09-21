@@ -6,11 +6,12 @@ package msg
 import (
     "fmt"
     "net"
+    "time"
 
     "frontline/lib/log"
 )
 
-func Receiver(conn net.Conn, q_recv chan<- Command, q_wait <-chan bool) error {
+func Receiver(conn net.Conn, q_recv chan<- Command, q_wait <-chan bool, running *bool) error {
     defer close(q_recv)
     tag := log.NewTag("Receiver")
     if tcp, ok := conn.(*net.TCPConn); ok {
@@ -19,9 +20,16 @@ func Receiver(conn net.Conn, q_recv chan<- Command, q_wait <-chan bool) error {
 
     buf := make([]byte, 65536)
     n := 0
-    for {
+    for *running {
+	now := time.Now()
+	conn.SetReadDeadline(now.Add(time.Second))
 	r, err := conn.Read(buf[n:])
 	if err != nil {
+	    if operr, ok := err.(*net.OpError); ok {
+		if operr.Timeout() {
+		    continue
+		}
+	    }
 	    return err
 	}
 	if r == 0 {
@@ -58,4 +66,5 @@ func Receiver(conn net.Conn, q_recv chan<- Command, q_wait <-chan bool) error {
 	    n = 0
 	}
     }
+    return fmt.Errorf("not running")
 }

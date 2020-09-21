@@ -148,18 +148,20 @@ func (s *SupplyLine)main(conn net.Conn) {
 	tag.Printf("send command error: %v\n", err)
 	return
     }
+
     // now link is established, start receiver
+    ticker := time.NewTicker(time.Minute)
+    defer ticker.Stop()
+
+    running := true
     q_recv := make(chan msg.Command, 256)
     q_wait := make(chan bool, 256)
     // start receiver
     go func() {
-	err := msg.Receiver(conn, q_recv, q_wait)
+	err := msg.Receiver(conn, q_recv, q_wait, &running)
 	tag.Printf("Receiver: %v\n", err)
 	close(q_wait)
     }()
-    ticker := time.NewTicker(time.Minute)
-    defer ticker.Stop()
-    running := true
     for running {
 	select {
 	case cmd, ok := <-q_recv:
@@ -193,6 +195,8 @@ func (s *SupplyLine)main(conn net.Conn) {
 	    }
 	}
     }
+
+    time.Sleep(time.Second * 3)
 }
 
 func (s *SupplyLine)Run() {
