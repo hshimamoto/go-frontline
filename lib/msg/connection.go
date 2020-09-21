@@ -20,6 +20,7 @@ type Connection struct {
     Q chan Command
     SeqLocal, SeqRemote int
     ctrl_q chan bool
+    connected bool
 }
 
 func localReader(id int, conn net.Conn, buf []byte, q_lread chan<- int, q_lwait <-chan bool, running *bool) {
@@ -70,10 +71,32 @@ func (c *Connection)Run(conn net.Conn, q_req chan<- []byte) {
     // start LocalReader
     running := true
     go localReader(id, conn, buf, q_lread, q_lwait, &running)
+    localwaiter := func() {
+	for {
+	    r := <-q_lread
+	    q_lwait <- true
+	    if r == 0 {
+		break
+	    }
+	}
+    }
     for running {
 	select {
 	case cmd := <-c.Q:
 	    switch cmd := cmd.(type) {
+	    case *ConnectAckCommand:
+		if c.connected {
+		    // ignore
+		    break
+		}
+		if !cmd.Ok {
+		    conn.Write([]byte("HTTP/1.0 400 Bad Request\r\n\r\n"))
+		    running = false
+		    go localwaiter()
+		    break
+		}
+		conn.Write([]byte("HTTP/1.0 200 Established\r\n\r\n"))
+		c.connected = true
 	    case *DataCommand:
 		// write to local connection
 		seq := cmd.Seq
@@ -92,15 +115,7 @@ func (c *Connection)Run(conn net.Conn, q_req chan<- []byte) {
 		// disconnect from remote
 		running = false
 		// need to wait localReader done
-		go func() {
-		    for {
-			r := <-q_lread
-			q_lwait <- true
-			if r == 0 {
-			    break
-			}
-		    }
-		}()
+		go localwaiter()
 	    }
 	case r:= <-q_lread:
 	    if r > 0 {
@@ -125,15 +140,7 @@ func (c *Connection)Run(conn net.Conn, q_req chan<- []byte) {
 	    // cancel
 	    running = false
 	    // need to wait localReader done
-	    go func() {
-		for {
-		    r := <-q_lread
-		    q_lwait <- true
-		    if r == 0 {
-			break
-		    }
-		}
-	    }()
+	    go localwaiter()
 	}
     }
 
@@ -151,6 +158,7 @@ func (c *Connection)Init(id int) {
     c.SeqLocal = 0
     c.SeqRemote = 0
     c.ctrl_q = make(chan bool)
+    c.connected = false
 }
 
 func (c *Connection)Cancel() {
@@ -166,6 +174,7 @@ func (c *Connection)Free(done func()) {
     go func() {
 	time.Sleep(time.Minute)
 	c.Used = false
+	c.connected = false
 	done()
     }()
 }

@@ -243,24 +243,6 @@ func (s *SupplyLine)Connect(conn net.Conn) {
     cmd := msg.PackedConnectCommand(c.Id, hostport)
     s.q_req <- cmd
 
-    result := false
-    select {
-    case ack := <-c.Q:
-	if ack, ok := ack.(*msg.ConnectAckCommand); ok {
-	    result = ack.Ok
-	}
-    case <-time.After(10 * time.Second):
-    }
-
-    if !result {
-	// send back established response in HTTP CONNECT METHOD
-	conn.Write([]byte("HTTP/1.0 400 Bad Request\r\n\r\n"))
-	return
-    }
-
-    // send back established response in HTTP CONNECT METHOD
-    conn.Write([]byte("HTTP/1.0 200 Established\r\n\r\n"))
-
     go func() {
 	c.Run(conn, s.q_req)
 	conn.Close()
