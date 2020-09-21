@@ -188,7 +188,7 @@ func (s *SupplyLine)main(conn net.Conn) {
 	    }
 	case <-ticker.C:
 	    // keep alive
-	    conn.Write(msg.PackedKeepaliveCommand())
+	    s.q_req <- msg.PackedKeepaliveCommand()
 	    s.keepalive++
 	    if s.keepalive >= 3 {
 		tag.Printf("keep alive failed\n")
