@@ -196,6 +196,11 @@ func (s *SupplyLine)main(conn net.Conn) {
 	}
     }
 
+    for i := 0; i < 256; i++ {
+	c := &s.connections[i]
+	c.Cancel()
+    }
+
     time.Sleep(time.Second * 3)
 }
 

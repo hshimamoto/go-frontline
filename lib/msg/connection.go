@@ -19,6 +19,7 @@ type Connection struct {
     Next *Connection
     Q chan Command
     SeqLocal, SeqRemote int
+    ctrl_q chan bool
 }
 
 func localReader(id int, conn net.Conn, buf []byte, q_lread chan<- int, q_lwait <-chan bool, running *bool) {
@@ -120,6 +121,19 @@ func (c *Connection)Run(conn net.Conn, q_req chan<- []byte) {
 	    datacmd := PackedDataCommand(id, c.SeqLocal, []byte{})
 	    c.SeqLocal++
 	    q_req <- datacmd
+	case <-c.ctrl_q:
+	    // cancel
+	    running = false
+	    // need to wait localReader done
+	    go func() {
+		for {
+		    r := <-q_lread
+		    q_lwait <- true
+		    if r == 0 {
+			break
+		    }
+		}
+	    }()
 	}
     }
 
@@ -136,6 +150,11 @@ func (c *Connection)Init(id int) {
     c.Q = make(chan Command)
     c.SeqLocal = 0
     c.SeqRemote = 0
+    c.ctrl_q = make(chan bool)
+}
+
+func (c *Connection)Cancel() {
+    c.ctrl_q <- true
 }
 
 func (c *Connection)FlushQ() {
