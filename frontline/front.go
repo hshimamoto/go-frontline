@@ -110,6 +110,8 @@ func (s *SupplyLine)Run() {
 	tag = log.NewTag(fmt.Sprintf("%v", tcp.RemoteAddr()))
     }
 
+    tag.Printf("connected to frontline\n")
+
     ticker := time.NewTicker(time.Minute)
     defer ticker.Stop()
 
@@ -156,12 +158,16 @@ func (s *SupplyLine)Run() {
 	}
     }
 
+    tag.Printf("disconnected from backline\n")
+
     for i := 0; i < 256; i++ {
 	c := &s.connections[i]
 	c.Cancel()
     }
 
     time.Sleep(time.Second * 3)
+
+    tag.Printf("end main\n")
 }
 
 func main() {

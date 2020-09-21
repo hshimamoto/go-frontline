@@ -138,6 +138,8 @@ func (s *SupplyLine)main(conn net.Conn) {
 	tag = log.NewTag(fmt.Sprintf("%v", tcp.RemoteAddr()))
     }
 
+    tag.Printf("connected to frontline\n")
+
     hostname, err := os.Hostname()
     if err != nil {
 	tag.Printf("unable to get hostname: %v\n", err)
@@ -196,12 +198,16 @@ func (s *SupplyLine)main(conn net.Conn) {
 	}
     }
 
+    tag.Printf("disconnected from frontline\n")
+
     for i := 0; i < 256; i++ {
 	c := &s.connections[i]
 	c.Cancel()
     }
 
     time.Sleep(time.Second * 3)
+
+    tag.Printf("end main\n")
 }
 
 func (s *SupplyLine)Run() {
