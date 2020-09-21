@@ -50,8 +50,8 @@ func Receiver(conn net.Conn, q_recv chan<- Command, q_wait <-chan bool, running 
 	    }
 	    if clen == -1 {
 		// parse error
-		if n > 8 {
-		    n = 8
+		if n - s > 8 {
+		    n = s + 8
 		}
 		return fmt.Errorf("command parse error: %v\n", buf[s:n])
 	    }
