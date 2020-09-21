@@ -137,6 +137,7 @@ func (s *SupplyLine)Run() {
 	    q_wait <- true
 	case cmd := <-s.q_req:
 	    n := 0
+	    tag.Printf("send %d bytes\n", len(cmd))
 	    for n < len(cmd) {
 		w, err := conn.Write(cmd[n:])
 		if err != nil {
