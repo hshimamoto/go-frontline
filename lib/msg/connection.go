@@ -19,6 +19,7 @@ type Connection struct {
     Next *Connection
     Q chan Command
     SeqLocal, SeqRemote int
+    freeing bool
     ctrl_q chan bool
     connected bool
 }
@@ -159,22 +160,31 @@ func (c *Connection)Init(id int) {
     c.SeqRemote = 0
     c.ctrl_q = make(chan bool)
     c.connected = false
+    c.freeing = false
 }
 
 func (c *Connection)Cancel() {
-    c.ctrl_q <- true
+    if c.Used {
+	if !c.freeing {
+	    c.ctrl_q <- true
+	}
+    }
 }
 
 func (c *Connection)FlushQ() {
     close(c.Q)
     c.Q = make(chan Command, 32)
+    close(c.ctrl_q)
+    c.ctrl_q = make(chan bool)
 }
 
 func (c *Connection)Free(done func()) {
+    c.freeing = true
     go func() {
 	time.Sleep(time.Minute)
 	c.Used = false
 	c.connected = false
 	done()
+	c.freeing = false
     }()
 }

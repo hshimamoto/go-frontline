@@ -205,6 +205,13 @@ func (s *SupplyLine)main(conn net.Conn) {
 	c.Cancel()
     }
 
+    for i := 0; i < 256; i++ {
+	c := &s.connections[i]
+	for c.Used {
+	    time.Sleep(time.Second)
+	}
+    }
+
     time.Sleep(time.Second * 3)
 
     tag.Printf("end main\n")
