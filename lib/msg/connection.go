@@ -154,7 +154,7 @@ func (c *Connection)Init(id int) {
     c.Id = id
     c.Used = false
     c.Next = nil
-    c.Q = make(chan Command)
+    c.Q = make(chan Command, 32)
     c.SeqLocal = 0
     c.SeqRemote = 0
     c.ctrl_q = make(chan bool)
@@ -167,7 +167,7 @@ func (c *Connection)Cancel() {
 
 func (c *Connection)FlushQ() {
     close(c.Q)
-    c.Q = make(chan Command)
+    c.Q = make(chan Command, 32)
 }
 
 func (c *Connection)Free(done func()) {
