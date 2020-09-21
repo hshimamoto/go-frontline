@@ -61,7 +61,11 @@ func Receiver(conn net.Conn, q_recv chan<- Command, q_wait <-chan bool, running 
 	    s += clen
 	}
 	if s < n {
-	    copy(buf, buf[s:n])
+	    if s > 0 {
+		tag.Printf("slide buffer\n")
+		copy(buf, buf[s:n])
+		n -= s
+	    }
 	} else {
 	    n = 0
 	}
