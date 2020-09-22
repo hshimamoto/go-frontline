@@ -111,7 +111,7 @@ func (s *SupplyLine)main2(conn net.Conn) {
 
     tag.Printf("disconnected from frontline\n")
 
-    supplyline.CleanConnections(s.cm.Connections())
+    s.cm.Clean()
 
     time.Sleep(time.Second * 3)
 

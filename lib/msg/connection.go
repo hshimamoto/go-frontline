@@ -243,3 +243,17 @@ func (cm *ConnectionManager)PutFree(c *Connection) {
 func (cm *ConnectionManager)Connections() []Connection {
     return cm.connections
 }
+
+func (cm *ConnectionManager)Clean() {
+    for i := 0; i < 256; i++ {
+	c := &cm.connections[i]
+	c.Cancel()
+    }
+
+    for i := 0; i < 256; i++ {
+	c := &cm.connections[i]
+	for c.Used {
+	    time.Sleep(time.Second)
+	}
+    }
+}
