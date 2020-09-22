@@ -22,11 +22,11 @@ type SupplyLine struct {
     q_req chan []byte
 }
 
-func NewSupplyLine() (*SupplyLine, error) {
+func NewSupplyLine() *SupplyLine {
     s := &SupplyLine{}
     s.cm = msg.NewConnectionManager()
     s.q_req = make(chan []byte, 256)
-    return s, nil
+    return s
 }
 
 func (s *SupplyLine)HandleLink(cmd *msg.LinkCommand) {
@@ -114,9 +114,8 @@ func main() {
 	    log.Printf("enable keepalive: %v\n", err)
 	}
 	// new SupplyLine
-	if s, err := NewSupplyLine(); err == nil {
-	    s.Run(conn)
-	}
+	s := NewSupplyLine()
+	s.Run(conn)
 	log.Println("close connection")
     })
     if err != nil {
