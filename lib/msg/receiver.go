@@ -20,6 +20,7 @@ func Receiver(conn net.Conn, q_recv chan<- Command, q_wait <-chan bool, running 
 
     buf := make([]byte, 65536)
     n := 0
+    s := 0
     for *running {
 	now := time.Now()
 	conn.SetReadDeadline(now.Add(time.Second))
@@ -36,7 +37,6 @@ func Receiver(conn net.Conn, q_recv chan<- Command, q_wait <-chan bool, running 
 	    return fmt.Errorf("no read")
 	}
 	n += r
-	s := 0
 	for s < n {
 	    tag.Printf("try to parse buf[%d:%d]\n", s, n)
 	    cmd, clen := ParseCommand(buf[s:n])
@@ -61,13 +61,16 @@ func Receiver(conn net.Conn, q_recv chan<- Command, q_wait <-chan bool, running 
 	    s += clen
 	}
 	if s < n {
-	    if s > 0 {
+	    tag.Printf("check %d %d\n", s, n)
+	    if s > 32768 {
 		tag.Printf("slide buffer\n")
 		copy(buf, buf[s:n])
 		n -= s
+		s = 0
 	    }
 	} else {
 	    n = 0
+	    s = 0
 	}
     }
     return fmt.Errorf("not running")
