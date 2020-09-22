@@ -12,6 +12,18 @@ import (
     "frontline/lib/log"
 )
 
+func writeall(conn net.Conn, cmd []byte) error {
+    n := 0
+    for n < len(cmd) {
+	w, err := conn.Write(cmd[n:])
+	if err != nil {
+	    return fmt.Errorf("writeall: %v", err)
+	}
+	n += w
+    }
+    return nil
+}
+
 func Main(conn net.Conn, h msg.CommandHandler, q_req chan []byte) {
     tag := log.NewTag("Unknown")
     if tcp, ok := conn.(*net.TCPConn); ok {
@@ -44,16 +56,11 @@ func Main(conn net.Conn, h msg.CommandHandler, q_req chan []byte) {
 	    q_wait <- true
 	    lastrecv = time.Now()
 	case cmd := <-q_req:
-	    n := 0
 	    tag.Printf("send %d bytes\n", len(cmd))
-	    for n < len(cmd) {
-		w, err := conn.Write(cmd[n:])
-		if err != nil {
-		    tag.Printf("write cmd: %v\n", err)
-		    running = false
-		    break
-		}
-		n += w
+	    if err := writeall(conn, cmd); err != nil {
+		tag.Printf("write cmd: %v\n", err)
+		running = false
+		break
 	    }
 	case <-ticker.C:
 	    // keep alive
