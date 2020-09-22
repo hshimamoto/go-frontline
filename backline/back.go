@@ -115,6 +115,9 @@ func (s *SupplyLine)main2(conn net.Conn) {
 
     tag.Printf("disconnected from frontline\n")
 
+    // wait a bit before Clean
+    time.Sleep(time.Second)
+
     s.cm.Clean()
 
     // wait
