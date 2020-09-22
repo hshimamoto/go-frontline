@@ -21,7 +21,6 @@ type SupplyLine struct {
     back net.Conn
     cm *msg.ConnectionManager
     q_req chan []byte
-    keepalive int
 }
 
 func NewSupplyLine(conn net.Conn) (*SupplyLine, error) {
@@ -37,7 +36,6 @@ func (s *SupplyLine)HandleLink(cmd *msg.LinkCommand) {
 }
 
 func (s *SupplyLine)HandleKeepalive(cmd *msg.KeepaliveCommand) {
-    s.keepalive = 0
 }
 
 func (s *SupplyLine)HandleConnect(cmd *msg.ConnectCommand) {
@@ -93,7 +91,7 @@ func (s *SupplyLine)main2(conn net.Conn) {
 
     tag.Printf("connected from backline\n")
 
-    supplyline.Main(conn, s, s.q_req, &s.keepalive)
+    supplyline.Main(conn, s, s.q_req)
 
     tag.Printf("disconnected from backline\n")
 

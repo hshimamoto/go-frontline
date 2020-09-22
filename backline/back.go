@@ -62,7 +62,6 @@ type SupplyLine struct {
     front string
     cm *msg.ConnectionManager
     q_req chan []byte
-    keepalive int
 }
 
 func NewSupplyLine(front string) *SupplyLine {
@@ -78,7 +77,6 @@ func (s *SupplyLine)HandleLink(cmd *msg.LinkCommand) {
 }
 
 func (s *SupplyLine)HandleKeepalive(cmd *msg.KeepaliveCommand) {
-    s.keepalive = 0
 }
 
 func (s *SupplyLine)HandleConnect(cmd *msg.ConnectCommand) {
@@ -107,7 +105,7 @@ func (s *SupplyLine)main2(conn net.Conn) {
 	tag = log.NewTag(fmt.Sprintf("%v", tcp.RemoteAddr()))
     }
 
-    supplyline.Main(conn, s, s.q_req, &s.keepalive)
+    supplyline.Main(conn, s, s.q_req)
 
     tag.Printf("disconnected from frontline\n")
 

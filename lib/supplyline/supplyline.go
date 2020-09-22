@@ -12,7 +12,7 @@ import (
     "frontline/lib/log"
 )
 
-func Main(conn net.Conn, h msg.CommandHandler, q_req chan []byte, keepalive *int) {
+func Main(conn net.Conn, h msg.CommandHandler, q_req chan []byte) {
     tag := log.NewTag("Unknown")
     if tcp, ok := conn.(*net.TCPConn); ok {
 	tag = log.NewTag(fmt.Sprintf("%v", tcp.RemoteAddr()))
@@ -30,6 +30,7 @@ func Main(conn net.Conn, h msg.CommandHandler, q_req chan []byte, keepalive *int
 	tag.Printf("Receiver: %v\n", err)
 	close(q_wait)
     }()
+    lastrecv := time.Now()
     for running {
 	select {
 	case cmd, ok := <-q_recv:
@@ -41,6 +42,7 @@ func Main(conn net.Conn, h msg.CommandHandler, q_req chan []byte, keepalive *int
 	    tag.Printf("recv %s\n", cmd.Name())
 	    msg.HandleCommand(h, cmd)
 	    q_wait <- true
+	    lastrecv = time.Now()
 	case cmd := <-q_req:
 	    n := 0
 	    tag.Printf("send %d bytes\n", len(cmd))
@@ -56,8 +58,7 @@ func Main(conn net.Conn, h msg.CommandHandler, q_req chan []byte, keepalive *int
 	case <-ticker.C:
 	    // keep alive
 	    q_req <- msg.PackedKeepaliveCommand()
-	    *keepalive++
-	    if *keepalive >= 3 {
+	    if time.Now().After(lastrecv.Add(time.Minute * 2)) {
 		tag.Printf("keep alive failed\n")
 		running = false
 		break
