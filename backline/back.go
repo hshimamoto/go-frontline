@@ -130,28 +130,12 @@ func (s *SupplyLine)HandleDataAck(cmd *msg.DataAckCommand) {
     c.Q <- cmd
 }
 
-func (s *SupplyLine)main(conn net.Conn) {
-    defer conn.Close()
-
+func (s *SupplyLine)main2(conn net.Conn) {
     tag := log.NewTag("Unknown")
     if tcp, ok := conn.(*net.TCPConn); ok {
 	tag = log.NewTag(fmt.Sprintf("%v", tcp.RemoteAddr()))
     }
 
-    tag.Printf("connected to frontline\n")
-
-    hostname, err := os.Hostname()
-    if err != nil {
-	tag.Printf("unable to get hostname: %v\n", err)
-	hostname = "Unknown"
-    }
-    cmd := msg.PackedLinkCommand(fmt.Sprintf("%s-%d", hostname, os.Getpid()))
-    if _, err := conn.Write(cmd); err != nil {
-	tag.Printf("send command error: %v\n", err)
-	return
-    }
-
-    // now link is established, start receiver
     ticker := time.NewTicker(time.Minute)
     defer ticker.Stop()
 
@@ -216,6 +200,31 @@ func (s *SupplyLine)main(conn net.Conn) {
     time.Sleep(time.Second * 3)
 
     tag.Printf("end main\n")
+}
+
+func (s *SupplyLine)main(conn net.Conn) {
+    defer conn.Close()
+
+    tag := log.NewTag("Unknown")
+    if tcp, ok := conn.(*net.TCPConn); ok {
+	tag = log.NewTag(fmt.Sprintf("%v", tcp.RemoteAddr()))
+    }
+
+    tag.Printf("connected to frontline\n")
+
+    hostname, err := os.Hostname()
+    if err != nil {
+	tag.Printf("unable to get hostname: %v\n", err)
+	hostname = "Unknown"
+    }
+    cmd := msg.PackedLinkCommand(fmt.Sprintf("%s-%d", hostname, os.Getpid()))
+    if _, err := conn.Write(cmd); err != nil {
+	tag.Printf("send command error: %v\n", err)
+	return
+    }
+
+    // now link is established, start receiver
+    s.main2(conn)
 }
 
 func (s *SupplyLine)Run() {

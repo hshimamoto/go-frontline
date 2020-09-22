@@ -102,15 +102,13 @@ func (s *SupplyLine)HandleDataAck(cmd *msg.DataAckCommand) {
     c.Q <- cmd
 }
 
-func (s *SupplyLine)Run() {
-    conn := s.back
-
+func (s *SupplyLine)main2(conn net.Conn) {
     tag := log.NewTag("Unknown")
     if tcp, ok := conn.(*net.TCPConn); ok {
 	tag = log.NewTag(fmt.Sprintf("%v", tcp.RemoteAddr()))
     }
 
-    tag.Printf("connected to frontline\n")
+    tag.Printf("connected from backline\n")
 
     ticker := time.NewTicker(time.Minute)
     defer ticker.Stop()
@@ -176,6 +174,12 @@ func (s *SupplyLine)Run() {
     time.Sleep(time.Second * 3)
 
     tag.Printf("end main\n")
+}
+
+func (s *SupplyLine)Run() {
+    conn := s.back
+
+    s.main2(conn)
 }
 
 func main() {
