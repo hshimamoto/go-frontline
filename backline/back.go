@@ -166,6 +166,17 @@ func (s *SupplyLine)Run() {
 
 func (s *SupplyLine)Connect(conn net.Conn) {
     log.Println("accept new stream")
+
+    if err := connection.EnableKeepAlive(conn); err != nil {
+	log.Printf("enable keepalive: %v\n", err)
+    }
+    hostport, err := waitHTTPConnect(conn)
+    if err != nil {
+	conn.Close()
+	return
+    }
+    log.Printf("CONNECT %s\n", hostport)
+
     if !s.live {
 	log.Println("no link")
 	return
@@ -176,7 +187,7 @@ func (s *SupplyLine)Connect(conn net.Conn) {
     c := cm.GetFree()
     t := time.Now().Add(time.Minute)
     for c == nil {
-	if time.Now().After(t) {
+	if !s.live || time.Now().After(t) {
 	    log.Println("no free connection slot")
 	    s.connecting--
 	    conn.Close()
@@ -190,15 +201,6 @@ func (s *SupplyLine)Connect(conn net.Conn) {
 	log.Println("no link")
 	return
     }
-    if err := connection.EnableKeepAlive(conn); err != nil {
-	log.Printf("enable keepalive: %v\n", err)
-    }
-    hostport, err := waitHTTPConnect(conn)
-    if err != nil {
-	conn.Close()
-	return
-    }
-    log.Printf("CONNECT %s\n", hostport)
 
     // mark it used
     c.Used = true
