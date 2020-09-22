@@ -118,8 +118,11 @@ func (s *SupplyLine)main2(conn net.Conn) {
     s.cm.Clean()
 
     // wait
-    for s.connecting > 0 {
-	time.Sleep(time.Second)
+    if s.connecting > 0 {
+	tag.Printf("wait finish waiting connection\n")
+	for s.connecting > 0 {
+	    time.Sleep(time.Second)
+	}
     }
 
     time.Sleep(time.Second * 3)
