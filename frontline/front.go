@@ -18,15 +18,12 @@ import (
 )
 
 type SupplyLine struct {
-    back net.Conn
     cm *msg.ConnectionManager
     q_req chan []byte
 }
 
-func NewSupplyLine(conn net.Conn) (*SupplyLine, error) {
-    s := &SupplyLine{
-	back: conn,
-    }
+func NewSupplyLine() (*SupplyLine, error) {
+    s := &SupplyLine{}
     s.cm = msg.NewConnectionManager()
     s.q_req = make(chan []byte, 256)
     return s, nil
@@ -83,29 +80,21 @@ func (s *SupplyLine)HandleDataAck(cmd *msg.DataAckCommand) {
     s.cm.Queue(cmd)
 }
 
-func (s *SupplyLine)main2(conn net.Conn) {
+func (s *SupplyLine)Run(conn net.Conn) {
     tag := log.NewTag("Unknown")
     if tcp, ok := conn.(*net.TCPConn); ok {
 	tag = log.NewTag(fmt.Sprintf("%v", tcp.RemoteAddr()))
     }
+    tag.Printf("start main\n")
 
     tag.Printf("connected from backline\n")
-
     supplyline.Main(conn, s, s.q_req)
-
     tag.Printf("disconnected from backline\n")
 
     s.cm.Clean()
-
     time.Sleep(time.Second * 3)
 
     tag.Printf("end main\n")
-}
-
-func (s *SupplyLine)Run() {
-    conn := s.back
-
-    s.main2(conn)
 }
 
 func main() {
@@ -125,8 +114,8 @@ func main() {
 	    log.Printf("enable keepalive: %v\n", err)
 	}
 	// new SupplyLine
-	if s, err := NewSupplyLine(conn); err == nil {
-	    s.Run()
+	if s, err := NewSupplyLine(); err == nil {
+	    s.Run(conn)
 	}
 	log.Println("close connection")
     })

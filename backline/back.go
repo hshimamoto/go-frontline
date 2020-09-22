@@ -103,43 +103,12 @@ func (s *SupplyLine)HandleDataAck(cmd *msg.DataAckCommand) {
     s.cm.Queue(cmd)
 }
 
-func (s *SupplyLine)main2(conn net.Conn) {
-    tag := log.NewTag("Unknown")
-    if tcp, ok := conn.(*net.TCPConn); ok {
-	tag = log.NewTag(fmt.Sprintf("%v", tcp.RemoteAddr()))
-    }
-
-    s.live = true
-    supplyline.Main(conn, s, s.q_req)
-    s.live = false
-
-    tag.Printf("disconnected from frontline\n")
-
-    // wait a bit before Clean
-    time.Sleep(time.Second)
-
-    s.cm.Clean()
-
-    // wait
-    if s.connecting > 0 {
-	tag.Printf("wait finish waiting connection\n")
-	for s.connecting > 0 {
-	    time.Sleep(time.Second)
-	}
-    }
-
-    time.Sleep(time.Second * 3)
-
-    tag.Printf("end main\n")
-}
-
 func (s *SupplyLine)main(conn net.Conn) {
-    defer conn.Close()
-
     tag := log.NewTag("Unknown")
     if tcp, ok := conn.(*net.TCPConn); ok {
 	tag = log.NewTag(fmt.Sprintf("%v", tcp.RemoteAddr()))
     }
+    tag.Printf("start main\n")
 
     tag.Printf("connected to frontline\n")
 
@@ -155,13 +124,34 @@ func (s *SupplyLine)main(conn net.Conn) {
     }
 
     // now link is established, start receiver
-    s.main2(conn)
+    s.live = true
+    supplyline.Main(conn, s, s.q_req)
+    s.live = false
+
+    tag.Printf("disconnected from frontline\n")
+
+    // wait a bit before Clean
+    time.Sleep(time.Second)
+    s.cm.Clean()
+
+    // wait
+    if s.connecting > 0 {
+	tag.Printf("wait finish waiting connection\n")
+	for s.connecting > 0 {
+	    time.Sleep(time.Second)
+	}
+    }
+
+    time.Sleep(time.Second * 3)
+
+    tag.Printf("end main\n")
 }
 
 func (s *SupplyLine)Run() {
     for {
 	if conn, err := session.Dial(s.front); err == nil {
 	    s.main(conn)
+	    conn.Close()
 	} else {
 	    log.Printf("SupplyLine %s: %v\n", s.front, err)
 	}
