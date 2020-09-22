@@ -62,6 +62,8 @@ type SupplyLine struct {
     front string
     cm *msg.ConnectionManager
     q_req chan []byte
+    connecting int
+    live bool
 }
 
 func NewSupplyLine(front string) *SupplyLine {
@@ -70,6 +72,8 @@ func NewSupplyLine(front string) *SupplyLine {
     }
     s.cm = msg.NewConnectionManager()
     s.q_req = make(chan []byte, 256)
+    s.connecting = 0
+    s.live = false
     return s
 }
 
@@ -105,11 +109,18 @@ func (s *SupplyLine)main2(conn net.Conn) {
 	tag = log.NewTag(fmt.Sprintf("%v", tcp.RemoteAddr()))
     }
 
+    s.live = true
     supplyline.Main(conn, s, s.q_req)
+    s.live = false
 
     tag.Printf("disconnected from frontline\n")
 
     s.cm.Clean()
+
+    // wait
+    for s.connecting > 0 {
+	time.Sleep(time.Second)
+    }
 
     time.Sleep(time.Second * 3)
 
@@ -155,6 +166,11 @@ func (s *SupplyLine)Run() {
 
 func (s *SupplyLine)Connect(conn net.Conn) {
     log.Println("accept new stream")
+    if !s.live {
+	log.Println("no link")
+	return
+    }
+    s.connecting++
     // keep ConnectionManager at this moment
     cm := s.cm
     c := cm.GetFree()
@@ -162,11 +178,17 @@ func (s *SupplyLine)Connect(conn net.Conn) {
     for c == nil {
 	if time.Now().After(t) {
 	    log.Println("no free connection slot")
+	    s.connecting--
 	    conn.Close()
 	    return
 	}
 	time.Sleep(time.Second)
 	c = cm.GetFree()
+    }
+    s.connecting--
+    if !s.live {
+	log.Println("no link")
+	return
     }
     if err := connection.EnableKeepAlive(conn); err != nil {
 	log.Printf("enable keepalive: %v\n", err)
