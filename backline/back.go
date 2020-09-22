@@ -81,6 +81,7 @@ func (s *SupplyLine)HandleLink(cmd *msg.LinkCommand) {
 }
 
 func (s *SupplyLine)HandleKeepalive(cmd *msg.KeepaliveCommand) {
+    log.Printf("keep alive %v\n", cmd.T)
 }
 
 func (s *SupplyLine)HandleConnect(cmd *msg.ConnectCommand) {

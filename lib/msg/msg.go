@@ -3,6 +3,10 @@
 // vim:set sw=4 sts=4:
 package msg
 
+import (
+    "time"
+)
+
 const (
     linkCommand = iota
     keepaliveCommand
@@ -64,17 +68,25 @@ func (c *LinkCommand)Id() int {
 }
 
 func PackedKeepaliveCommand() []byte {
-    buf := make([]byte, 1)
+    t, _ := time.Now().MarshalBinary()
+    buf := make([]byte, 2 + len(t))
     buf[0] = keepaliveCommand
+    buf[1] = byte(len(t))
+    copy(buf[2:], t)
     return buf
 }
 
 type KeepaliveCommand struct {
+    T time.Time
 }
 
 func ParseKeepaliveCommand(buf []byte) (*KeepaliveCommand, int) {
+    l := int(buf[1])
     c := &KeepaliveCommand{}
-    return c, 1
+    c.T = time.Time{}
+    t := &c.T
+    t.UnmarshalBinary(buf[2:])
+    return c, 2 + l
 }
 
 func (c *KeepaliveCommand)Name() string {
