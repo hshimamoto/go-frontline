@@ -157,11 +157,18 @@ func (s *SupplyLine)Run() {
 
 func (s *SupplyLine)Connect(conn net.Conn) {
     log.Println("accept new stream")
-    c := s.cm.GetFree()
-    if c == nil {
-	log.Println("no free connection slot")
-	conn.Close()
-	return
+    // keep ConnectionManager at this moment
+    cm := s.cm
+    c := cm.GetFree()
+    t := time.Now().Add(time.Minute)
+    for c == nil {
+	if time.Now().After(t) {
+	    log.Println("no free connection slot")
+	    conn.Close()
+	    return
+	}
+	time.Sleep(time.Second)
+	c = cm.GetFree()
     }
     if err := connection.EnableKeepAlive(conn); err != nil {
 	log.Printf("enable keepalive: %v\n", err)
@@ -185,7 +192,7 @@ func (s *SupplyLine)Connect(conn net.Conn) {
 	conn.Close()
 	c.Free(func(){
 	    // back to free
-	    s.cm.PutFree(c)
+	    cm.PutFree(c)
 	    log.Printf("connection %d back to freelist\n", c.Id)
 	})
     }()
