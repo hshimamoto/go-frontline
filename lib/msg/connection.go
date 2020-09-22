@@ -228,6 +228,13 @@ func (cm *ConnectionManager)GetFree() *Connection {
     return c
 }
 
+func (cm *ConnectionManager)Get(i int) *Connection {
+    if i < 0 || i >= 256 {
+	return nil
+    }
+    return &cm.connections[i]
+}
+
 func (cm *ConnectionManager)PutFree(c *Connection) {
     c.Next = cm.free
     cm.free = c
