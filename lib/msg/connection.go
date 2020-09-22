@@ -133,10 +133,6 @@ func (c *Connection)Run(conn net.Conn, q_req chan<- []byte) {
 	    q_lwait <- true
 	case <-time.After(time.Minute):
 	    // TODO: periodic process
-	    // Send Empty Data
-	    datacmd := PackedDataCommand(id, c.SeqLocal, []byte{})
-	    c.SeqLocal++
-	    q_req <- datacmd
 	case <-c.ctrl_q:
 	    // cancel
 	    running = false
