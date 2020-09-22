@@ -65,3 +65,17 @@ func Main(conn net.Conn, h msg.CommandHandler, q_req chan []byte, keepalive *int
 	}
     }
 }
+
+func CleanConnections(connections []msg.Connection) {
+    for i := 0; i < 256; i++ {
+	c := &connections[i]
+	c.Cancel()
+    }
+
+    for i := 0; i < 256; i++ {
+	c := &connections[i]
+	for c.Used {
+	    time.Sleep(time.Second)
+	}
+    }
+}
