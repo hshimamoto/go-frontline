@@ -14,6 +14,7 @@ import (
     "frontline/lib/connection"
     "frontline/lib/log"
     "frontline/lib/msg"
+    "frontline/lib/supplyline"
 
     "github.com/hshimamoto/go-session"
 )
@@ -136,52 +137,7 @@ func (s *SupplyLine)main2(conn net.Conn) {
 	tag = log.NewTag(fmt.Sprintf("%v", tcp.RemoteAddr()))
     }
 
-    ticker := time.NewTicker(time.Minute)
-    defer ticker.Stop()
-
-    running := true
-    q_recv := make(chan msg.Command, 256)
-    q_wait := make(chan bool, 256)
-    // start receiver
-    go func() {
-	err := msg.Receiver(conn, q_recv, q_wait, &running)
-	tag.Printf("Receiver: %v\n", err)
-	close(q_wait)
-    }()
-    for running {
-	select {
-	case cmd, ok := <-q_recv:
-	    if !ok {
-		tag.Printf("q_recv closed\n")
-		running = false
-		break
-	    }
-	    tag.Printf("recv %s\n", cmd.Name())
-	    msg.HandleCommand(s, cmd)
-	    q_wait <- true
-	case cmd := <-s.q_req:
-	    n := 0
-	    tag.Printf("send %d bytes\n", len(cmd))
-	    for n < len(cmd) {
-		w, err := conn.Write(cmd[n:])
-		if err != nil {
-		    tag.Printf("write cmd: %v\n", err)
-		    running = false
-		    break
-		}
-		n += w
-	    }
-	case <-ticker.C:
-	    // keep alive
-	    s.q_req <- msg.PackedKeepaliveCommand()
-	    s.keepalive++
-	    if s.keepalive >= 3 {
-		tag.Printf("keep alive failed\n")
-		running = false
-		break
-	    }
-	}
-    }
+    supplyline.Main(conn, s, s.q_req, &s.keepalive)
 
     tag.Printf("disconnected from frontline\n")
 
