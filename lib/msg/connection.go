@@ -81,6 +81,11 @@ func (c *Connection)Run(conn net.Conn, q_req chan<- []byte) {
 	    }
 	}
     }
+    stop := func() {
+	running = false
+	go localwaiter()
+    }
+    lastrecv := time.Now()
     for running {
 	select {
 	case cmd := <-c.Q:
@@ -92,8 +97,7 @@ func (c *Connection)Run(conn net.Conn, q_req chan<- []byte) {
 		}
 		if !cmd.Ok {
 		    conn.Write([]byte("HTTP/1.0 400 Bad Request\r\n\r\n"))
-		    running = false
-		    go localwaiter()
+		    stop()
 		    break
 		}
 		conn.Write([]byte("HTTP/1.0 200 Established\r\n\r\n"))
@@ -114,10 +118,9 @@ func (c *Connection)Run(conn net.Conn, q_req chan<- []byte) {
 		// TODO: ACK
 	    case *DisconnectCommand:
 		// disconnect from remote
-		running = false
-		// need to wait localReader done
-		go localwaiter()
+		stop()
 	    }
+	    lastrecv = time.Now()
 	case r:= <-q_lread:
 	    if r > 0 {
 		// DataCommand
@@ -132,12 +135,14 @@ func (c *Connection)Run(conn net.Conn, q_req chan<- []byte) {
 	    }
 	    q_lwait <- true
 	case <-time.After(time.Minute):
-	    // TODO: periodic process
+	    // disconnect no data in 1hour
+	    if time.Now().After(lastrecv.Add(time.Hour)) {
+		tag.Printf("no data in 1 hour\n")
+		stop()
+	    }
 	case <-c.ctrl_q:
 	    // cancel
-	    running = false
-	    // need to wait localReader done
-	    go localwaiter()
+	    stop()
 	}
     }
 
