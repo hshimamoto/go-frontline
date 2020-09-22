@@ -60,8 +60,7 @@ func waitHTTPConnect(conn net.Conn) (string, error) {
 
 type SupplyLine struct {
     front string
-    connections []msg.Connection
-    free *msg.Connection
+    cm *msg.ConnectionManager
     q_req chan []byte
     keepalive int
 }
@@ -70,17 +69,7 @@ func NewSupplyLine(front string) *SupplyLine {
     s := &SupplyLine{
 	front: front,
     }
-    s.connections = make([]msg.Connection, 256)
-    // initialize
-    var prev *msg.Connection = nil
-    for i := 0; i < 256; i++ {
-	conn := &s.connections[i]
-	conn.Init(i)
-	// for free list
-	conn.Next = prev
-	prev = conn
-    }
-    s.free = prev
+    s.cm = msg.NewConnectionManager()
     s.q_req = make(chan []byte, 256)
     return s
 }
@@ -93,42 +82,23 @@ func (s *SupplyLine)HandleKeepalive(cmd *msg.KeepaliveCommand) {
 }
 
 func (s *SupplyLine)HandleConnect(cmd *msg.ConnectCommand) {
+    // never happen ignore
 }
 
 func (s *SupplyLine)HandleConnectAck(cmd *msg.ConnectAckCommand) {
-    c := &s.connections[cmd.ConnId]
-    if !c.Used {
-	log.Printf("Ack for unused connection %d\n", cmd.ConnId)
-	return
-    }
-    c.Q <- cmd
+    s.cm.Queue(cmd)
 }
 
 func (s *SupplyLine)HandleDisconnect(cmd *msg.DisconnectCommand) {
-    c := &s.connections[cmd.ConnId]
-    if !c.Used {
-	log.Printf("Data for unused connection %d\n", cmd.ConnId)
-	return
-    }
-    c.Q <- cmd
+    s.cm.Queue(cmd)
 }
 
 func (s *SupplyLine)HandleData(cmd *msg.DataCommand) {
-    c := &s.connections[cmd.ConnId]
-    if !c.Used {
-	log.Printf("Data for unused connection %d\n", cmd.ConnId)
-	return
-    }
-    c.Q <- cmd
+    s.cm.Queue(cmd)
 }
 
 func (s *SupplyLine)HandleDataAck(cmd *msg.DataAckCommand) {
-    c := &s.connections[cmd.ConnId]
-    if !c.Used {
-	log.Printf("DataAck for unused connection %d\n", cmd.ConnId)
-	return
-    }
-    c.Q <- cmd
+    s.cm.Queue(cmd)
 }
 
 func (s *SupplyLine)main2(conn net.Conn) {
@@ -141,7 +111,7 @@ func (s *SupplyLine)main2(conn net.Conn) {
 
     tag.Printf("disconnected from frontline\n")
 
-    supplyline.CleanConnections(s.connections)
+    supplyline.CleanConnections(s.cm.Connections())
 
     time.Sleep(time.Second * 3)
 
@@ -187,7 +157,8 @@ func (s *SupplyLine)Run() {
 
 func (s *SupplyLine)Connect(conn net.Conn) {
     log.Println("accept new stream")
-    if s.free == nil {
+    c := s.cm.GetFree()
+    if c == nil {
 	log.Println("no free connection slot")
 	conn.Close()
 	return
@@ -202,9 +173,6 @@ func (s *SupplyLine)Connect(conn net.Conn) {
     }
     log.Printf("CONNECT %s\n", hostport)
 
-    // get one
-    c := s.free
-    s.free = s.free.Next
     // mark it used
     c.Used = true
     c.FlushQ()
@@ -217,8 +185,7 @@ func (s *SupplyLine)Connect(conn net.Conn) {
 	conn.Close()
 	c.Free(func(){
 	    // back to free
-	    c.Next = s.free
-	    s.free = c
+	    s.cm.PutFree(c)
 	    log.Printf("connection %d back to freelist\n", c.Id)
 	})
     }()

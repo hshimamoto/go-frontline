@@ -188,3 +188,51 @@ func (c *Connection)Free(done func()) {
 	c.freeing = false
     }()
 }
+
+type ConnectionManager struct {
+    connections []Connection
+    free *Connection
+}
+
+func NewConnectionManager() *ConnectionManager {
+    cm := &ConnectionManager{}
+    cm.connections = make([]Connection, 256)
+    var prev *Connection = nil
+    for i := 0; i < 256; i++ {
+	c := &cm.connections[i]
+	c.Init(i)
+	c.Next = prev
+	prev = c
+    }
+    cm.free = prev
+    return cm
+}
+
+func (cm *ConnectionManager)Queue(cmd Command) {
+    connId := cmd.Id()
+    if connId < 0 || connId >= 256 {
+	return
+    }
+    c := &cm.connections[connId]
+    if !c.Used {
+	return
+    }
+    c.Q <- cmd
+}
+
+func (cm *ConnectionManager)GetFree() *Connection {
+    c := cm.free
+    if c != nil {
+	cm.free = c.Next
+    }
+    return c
+}
+
+func (cm *ConnectionManager)PutFree(c *Connection) {
+    c.Next = cm.free
+    cm.free = c
+}
+
+func (cm *ConnectionManager)Connections() []Connection {
+    return cm.connections
+}

@@ -15,6 +15,7 @@ const (
 
 type Command interface {
     Name() string
+    Id() int
 }
 
 func PackedLinkCommand(client string) []byte {
@@ -58,6 +59,10 @@ func (c *LinkCommand)Name() string {
     return "LinkCommand"
 }
 
+func (c *LinkCommand)Id() int {
+    return -1
+}
+
 func PackedKeepaliveCommand() []byte {
     buf := make([]byte, 1)
     buf[0] = keepaliveCommand
@@ -74,6 +79,10 @@ func ParseKeepaliveCommand(buf []byte) (*KeepaliveCommand, int) {
 
 func (c *KeepaliveCommand)Name() string {
     return "KeepaliveCommand"
+}
+
+func (c *KeepaliveCommand)Id() int {
+    return -1
 }
 
 func PackedConnectCommand(connId int, hostport string) []byte {
@@ -124,6 +133,10 @@ func (c *ConnectCommand)Name() string {
     return "ConnectCommand"
 }
 
+func (c *ConnectCommand)Id() int {
+    return c.ConnId
+}
+
 func PackedConnectAckCommand(cmd *ConnectCommand, ok bool) []byte {
     buf := make([]byte, 3)
     buf[0] = connectAckCommand
@@ -160,6 +173,10 @@ func (c *ConnectAckCommand)Name() string {
     return "ConnectAckCommand"
 }
 
+func (c *ConnectAckCommand)Id() int {
+    return c.ConnId
+}
+
 func PackedDisconnectCommand(connId int) []byte {
     err := []byte{}
     if connId >= 256 {
@@ -185,6 +202,10 @@ func ParseDisconnectCommand(buf []byte) (*DisconnectCommand, int) {
 
 func (c *DisconnectCommand)Name() string {
     return "DisconnectCommand"
+}
+
+func (c *DisconnectCommand)Id() int {
+    return c.ConnId
 }
 
 func PackedDataCommand(connId, seq int, data []byte) []byte {
@@ -247,6 +268,10 @@ func (c *DataCommand)Name() string {
     return "DataCommand"
 }
 
+func (c *DataCommand)Id() int {
+    return c.ConnId
+}
+
 func PackedDataAckCommand(cmd *DataCommand) []byte {
     buf := make([]byte, 5)
     datalen := len(cmd.Data)
@@ -282,11 +307,19 @@ func (c *DataAckCommand)Name() string {
     return "DataAckCommand"
 }
 
+func (c *DataAckCommand)Id() int {
+    return c.ConnId
+}
+
 type UnknownCommand struct {
 }
 
 func (c *UnknownCommand)Name() string {
     return "UnknownCommand"
+}
+
+func (c *UnknownCommand)Id() int {
+    return -1
 }
 
 func ParseCommand(buf []byte) (Command, int) {
