@@ -177,6 +177,9 @@ func (c *Connection)FlushQ() {
     c.Q = make(chan Command, 32)
     close(c.ctrl_q)
     c.ctrl_q = make(chan bool)
+    // TODO: move it
+    c.SeqLocal = 0
+    c.SeqRemote = 0
 }
 
 func (c *Connection)Free(done func()) {
