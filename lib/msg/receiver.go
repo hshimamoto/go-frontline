@@ -53,7 +53,7 @@ func Receiver(conn net.Conn, q_recv chan<- Command, q_wait <-chan bool, running 
 		if n - s > 8 {
 		    n = s + 8
 		}
-		return fmt.Errorf("command parse error: %v\n", buf[s:n])
+		return fmt.Errorf("command parse error: %v", buf[s:n])
 	    }
 	    q_recv <- cmd
 	    // wait to finish command done
