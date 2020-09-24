@@ -40,10 +40,6 @@ func Receiver(conn net.Conn, q_recv chan<- Command, q_wait <-chan bool, running 
 	for s < n {
 	    tag.Printf("try to parse buf[%d:%d]\n", s, n)
 	    cmd, clen := ParseCommand(buf[s:n])
-	    if cmd == nil {
-		tag.Printf("not enough buffer (cmd == nil)\n")
-		break
-	    }
 	    if clen == 0 {
 		tag.Printf("not enough buffer (clen == 0)\n")
 		break
