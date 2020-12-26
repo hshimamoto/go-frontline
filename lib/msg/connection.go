@@ -74,9 +74,13 @@ func (c *Connection)Run(conn net.Conn, q_req chan<- []byte) {
     go localReader(id, conn, buf, q_lread, q_lwait, &running)
     localwaiter := func() {
 	for {
-	    r := <-q_lread
-	    q_lwait <- true
-	    if r == 0 {
+	    r, ok := <-q_lread
+	    if ok {
+		q_lwait <- true
+		if r == 0 {
+		    break
+		}
+	    } else {
 		break
 	    }
 	}
