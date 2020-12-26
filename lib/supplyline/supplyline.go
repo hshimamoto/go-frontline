@@ -51,12 +51,12 @@ func Main(conn net.Conn, h msg.CommandHandler, q_req chan []byte) {
 		running = false
 		break
 	    }
-	    tag.Printf("recv %s\n", cmd.Name())
+	    //tag.Printf("recv %s\n", cmd.Name())
 	    msg.HandleCommand(h, cmd)
 	    q_wait <- true
 	    lastrecv = time.Now()
 	case cmd := <-q_req:
-	    tag.Printf("send %d bytes\n", len(cmd))
+	    //tag.Printf("send %d bytes\n", len(cmd))
 	    if err := writeall(conn, cmd); err != nil {
 		tag.Printf("write cmd: %v\n", err)
 		running = false

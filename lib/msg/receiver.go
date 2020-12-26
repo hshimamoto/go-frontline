@@ -38,10 +38,10 @@ func Receiver(conn net.Conn, q_recv chan<- Command, q_wait <-chan bool, running 
 	}
 	n += r
 	for s < n {
-	    tag.Printf("try to parse buf[%d:%d]\n", s, n)
+	    //tag.Printf("try to parse buf[%d:%d]\n", s, n)
 	    cmd, clen := ParseCommand(buf[s:n])
 	    if clen == 0 {
-		tag.Printf("not enough buffer (clen == 0)\n")
+		//tag.Printf("not enough buffer (clen == 0)\n")
 		break
 	    }
 	    if clen == -1 {
@@ -57,9 +57,9 @@ func Receiver(conn net.Conn, q_recv chan<- Command, q_wait <-chan bool, running 
 	    s += clen
 	}
 	if s < n {
-	    tag.Printf("check %d %d\n", s, n)
+	    //tag.Printf("check %d %d\n", s, n)
 	    if s > 32768 {
-		tag.Printf("slide buffer\n")
+		tag.Printf("slide buffer %d %d\n", s, n)
 		copy(buf, buf[s:n])
 		n -= s
 		s = 0
