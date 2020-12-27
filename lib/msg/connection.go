@@ -11,7 +11,7 @@ import (
     "frontline/lib/log"
 )
 
-const LocalBufferSize = 16384
+const LocalBufferSize = 1024
 
 type Connection struct {
     Id int
