@@ -54,6 +54,7 @@ func (s *SupplyLine)HandleConnect(cmd *msg.ConnectCommand) {
 	c.Used = false
 	return
     }
+    log.Printf("connected to %s\n", hostport)
     s.q_req <- msg.PackedConnectAckCommand(cmd, true)
 
     go func () {
