@@ -27,6 +27,10 @@ func waitHTTPConnect(conn net.Conn) (string, error) {
 	return "", err
     }
     for {
+	if n >= 256 {
+	    log.Println("header too long")
+	    return "", fmt.Errorf("request header too long")
+	}
 	if bytes.Index(buf, []byte{13, 10, 13, 10}) > 0 {
 	    break
 	}
@@ -40,10 +44,6 @@ func waitHTTPConnect(conn net.Conn) (string, error) {
 	    return "", fmt.Errorf("no Read")
 	}
 	n += r
-	if n >= 256 {
-	    log.Println("header too long")
-	    return "", fmt.Errorf("request header too long")
-	}
     }
     lines := strings.Split(string(buf[:n]), "\r\n")
     w := strings.Split(lines[0], " ")
