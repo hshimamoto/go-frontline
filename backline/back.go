@@ -175,6 +175,7 @@ func (s *SupplyLine)Connect(conn net.Conn) {
     log.Printf("CONNECT %s\n", hostport)
 
     if !s.live {
+	conn.Close()
 	log.Println("no link")
 	return
     }
