@@ -58,7 +58,7 @@ func (s *SupplyLine)HandleConnect(cmd *msg.ConnectCommand) {
     s.q_req <- msg.PackedConnectAckCommand(cmd, true)
 
     go func () {
-	c.Run(lconn, s.q_req)
+	c.Run(hostport, lconn, s.q_req)
 	lconn.Close()
 	c.Free(func(){
 	    log.Printf("connection %d freed\n", c.Id)

@@ -208,7 +208,7 @@ func (s *SupplyLine)Connect(conn net.Conn) {
     s.q_req <- cmd
 
     go func() {
-	c.Run(conn, s.q_req)
+	c.Run(hostport, conn, s.q_req)
 	conn.Close()
 	c.Free(func(){
 	    // back to free

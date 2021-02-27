@@ -24,8 +24,8 @@ type Connection struct {
     connected bool
 }
 
-func localReader(id int, conn net.Conn, buf []byte, q_lread chan<- int, q_lwait <-chan bool, running *bool) {
-    tag := log.NewTag(fmt.Sprintf("C[%d] localReader", id))
+func localReader(id int, hostport string, conn net.Conn, buf []byte, q_lread chan<- int, q_lwait <-chan bool, running *bool) {
+    tag := log.NewTag(fmt.Sprintf("C[%d] localReader <%s>", id, hostport))
     tag.Printf("start")
     for *running {
 	now := time.Now()
@@ -61,17 +61,17 @@ func localReader(id int, conn net.Conn, buf []byte, q_lread chan<- int, q_lwait 
     tag.Printf("end\n")
 }
 
-func (c *Connection)Run(conn net.Conn, q_req chan<- []byte) {
+func (c *Connection)Run(hostport string, conn net.Conn, q_req chan<- []byte) {
     id := c.Id
     tag := log.NewTag(fmt.Sprintf("C[%d]", id))
-    tag.Printf("start")
+    tag.Printf("start - %s", hostport)
 
     buf := make([]byte, LocalBufferSize)
     q_lread := make(chan int, 32)
     q_lwait := make(chan bool, 32)
     // start LocalReader
     running := true
-    go localReader(id, conn, buf, q_lread, q_lwait, &running)
+    go localReader(id, hostport, conn, buf, q_lread, q_lwait, &running)
     localwaiter := func() {
 	for {
 	    r, ok := <-q_lread
@@ -139,6 +139,7 @@ func (c *Connection)Run(conn net.Conn, q_req chan<- []byte) {
 	    }
 	    q_lwait <- true
 	case <-time.After(time.Minute):
+	    tag.Printf("check - %s", hostport)
 	    // disconnect no data in 1hour
 	    if time.Now().After(lastrecv.Add(time.Hour)) {
 		tag.Printf("no data in 1 hour\n")
@@ -153,7 +154,7 @@ func (c *Connection)Run(conn net.Conn, q_req chan<- []byte) {
     time.Sleep(time.Second * 3)
     close(q_lwait)
 
-    tag.Printf("end")
+    tag.Printf("end - %s", hostport)
 }
 
 func (c *Connection)Init(id int) {
