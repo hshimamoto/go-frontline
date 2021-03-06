@@ -27,6 +27,7 @@ type Connection struct {
 func localReader(id int, hostport string, conn net.Conn, buf []byte, q_lread chan<- int, q_lwait <-chan bool, running *bool) {
     tag := log.NewTag(fmt.Sprintf("C[%d] localReader <%s>", id, hostport))
     tag.Printf("start")
+    var bytes uint64 = 0
     for *running {
 	now := time.Now()
 	conn.SetReadDeadline(now.Add(time.Second))
@@ -44,6 +45,7 @@ func localReader(id int, hostport string, conn net.Conn, buf []byte, q_lread cha
 	    tag.Printf("closed\n")
 	    break
 	}
+	bytes += uint64(r)
 	// send
 	q_lread <- r
 	// wait handled
@@ -58,7 +60,7 @@ func localReader(id int, hostport string, conn net.Conn, buf []byte, q_lread cha
     q_lread <- 0
     <-q_lwait
     close(q_lread)
-    tag.Printf("end\n")
+    tag.Printf("end (recv %d bytes)\n", bytes)
 }
 
 func (c *Connection)Run(hostport string, conn net.Conn, q_req chan<- []byte) {
